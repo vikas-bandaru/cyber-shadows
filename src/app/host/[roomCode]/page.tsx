@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useGameState } from '@/hooks/useGameState';
 import { usePlayers } from '@/hooks/usePlayers';
-import { advancePhase, assignRoles, evaluateWinCondition, resetGame, deleteRoom, startMission, GamePhase, Player, Mission } from '@/lib/game-logic';
+import { advancePhase, assignRoles, evaluateWinCondition, resetGame, deleteRoom, startMission, liquidatePot, GamePhase, Player, Mission } from '@/lib/game-logic';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -18,6 +18,7 @@ export default function HostDashboard() {
   const { players, loading: playersLoading } = usePlayers(roomId || '');
   
   const [votes, setVotes] = useState<any[]>([]);
+  const [nightVotes, setNightVotes] = useState<any[]>([]);
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [missionOutcome, setMissionOutcome] = useState<'success' | 'failed' | null>(null);
   const [isVotesLocked, setIsVotesLocked] = useState(false);
@@ -89,7 +90,24 @@ export default function HostDashboard() {
       };
       fetchInitialVotes();
 
-      return () => { supabase.removeChannel(voteChannel); };
+      // Night Votes Subscription
+      const nightVoteChannel = supabase
+        .channel(`night_votes:${roomId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'night_votes', filter: `room_id=eq.${roomId}` }, () => {
+          fetchInitialNightVotes();
+        })
+        .subscribe();
+
+      const fetchInitialNightVotes = async () => {
+        const { data } = await supabase.from('night_votes').select('*').eq('room_id', roomId);
+        if (data) setNightVotes(data);
+      };
+      fetchInitialNightVotes();
+
+      return () => { 
+        supabase.removeChannel(voteChannel); 
+        supabase.removeChannel(nightVoteChannel);
+      };
     }
   }, [roomId]);
 
@@ -112,6 +130,28 @@ export default function HostDashboard() {
   const maxVotes = Math.max(...Object.values(voteTallies), 0);
   const mostVotedPlayers = alivePlayers.filter(p => (voteTallies[p.id] || 0) === maxVotes && maxVotes > 0);
   const isTie = isVotesLocked && mostVotedPlayers.length > 1 && (gameState?.tie_protocol === 'none' || !gameState?.tie_protocol);
+
+  const nightVoteTallies = useMemo(() => {
+    const tallies: Record<string, number> = {};
+    nightVotes.forEach(v => {
+      tallies[v.target_id] = (tallies[v.target_id] || 0) + 1;
+    });
+    return tallies;
+  }, [nightVotes]);
+
+  const maxNightVotes = Math.max(...Object.values(nightVoteTallies), 0);
+  const nightConsensusPlayers = alivePlayers.filter(p => (nightVoteTallies[p.id] || 0) === maxNightVotes && maxNightVotes > 0);
+  const activeNightTargetId = nightConsensusPlayers.length === 1 ? nightConsensusPlayers[0].id : null;
+
+  const potentialWinner = useMemo(() => {
+    if (playersLoading || players.length === 0 || phase === 'lobby' || phase === 'reveal') return null;
+    const poetsCount = players.filter(p => p.role === 'sukhan_war' && (p.status === 'alive' || p.status === 'silenced')).length;
+    const plagiaristsCount = players.filter(p => p.role === 'naqal_baaz' && (p.status === 'alive' || p.status === 'silenced')).length;
+    
+    if (plagiaristsCount === 0) return 'poets';
+    if (plagiaristsCount >= poetsCount) return 'plagiarists';
+    return null;
+  }, [players, playersLoading, phase]);
 
   const hasPlayedRef = useRef(false);
 
@@ -170,6 +210,9 @@ export default function HostDashboard() {
             const winner = await evaluateWinCondition(roomId);
             if (winner) {
                 await supabase.from('game_rooms').update({ current_phase: 'end', winner_faction: winner }).eq('id', roomId);
+                if (winner === 'poets') {
+                    await liquidatePot(roomId);
+                }
                 return;
             }
         }
@@ -177,11 +220,19 @@ export default function HostDashboard() {
         // Phase Cleanup
         if (nextPhase === 'majlis' || nextPhase === 'night' || nextPhase === 'mission') {
             await supabase.from('votes').delete().eq('room_id', roomId);
+            await supabase.from('night_votes').delete().eq('room_id', roomId);
             setVotes([]);
+            setNightVotes([]);
             setIsVotesLocked(false);
             setBanishedPlayerId(null);
             setMissionOutcome(null);
             setSilenceConfirmed(false);
+            
+            // Clear reveal state when moving to a new phase
+            await supabase.from('game_rooms').update({ 
+                is_revealing: false, 
+                reveal_target_id: null 
+            }).eq('id', roomId);
         }
 
         await advancePhase(roomId, nextPhase);
@@ -246,21 +297,50 @@ export default function HostDashboard() {
   };
 
   const handleSilence = async (targetId: string) => {
+    if (!roomId) return;
     await supabase.from('players').update({ status: 'silenced' }).eq('id', targetId);
+    await supabase.from('night_votes').delete().eq('room_id', roomId);
     setSilenceConfirmed(true);
   };
 
+  const handleWakeUpReveal = async (targetId: string | null) => {
+    if (!roomId) return;
+    // 1. Set reveal state
+    await supabase.from('game_rooms').update({ 
+        is_revealing: true, 
+        reveal_target_id: targetId 
+    }).eq('id', roomId);
+
+    // 2. Evaluate win condition
+    const winner = await evaluateWinCondition(roomId);
+    
+    // 3. Transition to mission after delay (handled by Host clicking button again or auto)
+    // For now, let's keep it manual so Host can control the cinematic length.
+  };
+
   const handleVerifySabotage = async () => {
+    if (missionOutcome) return; // Already concluded
+    
     // Award gold to plagiarists and update pot
     const plagiarists = players.filter(p => p.role === 'naqal_baaz' && p.status === 'alive');
     for (const p of plagiarists) {
       await supabase.from('players').update({ private_gold: (p.private_gold || 0) + 500 }).eq('id', p.id);
     }
-    await supabase.from('game_rooms').update({ eidi_pot: (gameState!.eidi_pot || 0) + 1000, sabotage_triggered: false }).eq('id', roomId);
+    await supabase.from('game_rooms').update({ 
+        eidi_pot: (gameState!.eidi_pot || 0) + 1000, 
+        sabotage_triggered: false,
+        sabotage_used: true
+    }).eq('id', roomId);
+    // DO NOT set missionOutcome or clear timer here
   };
 
   const handleMissionSuccess = async () => {
-    await supabase.from('game_rooms').update({ eidi_pot: (gameState!.eidi_pot || 0) + 2000 }).eq('id', roomId);
+    if (missionOutcome) return;
+    
+    await supabase.from('game_rooms').update({ 
+        eidi_pot: (gameState!.eidi_pot || 0) + 2000,
+        mission_timer_end: null 
+    }).eq('id', roomId);
     setMissionOutcome('success');
   };
 
@@ -343,7 +423,11 @@ export default function HostDashboard() {
             gameState?.tie_protocol === 'decree' ? "Sultan's Decree: You must hold the final power to banish a poet." :
             "Majlis Open: Debate and cast votes to banish suspects."
           )}
-          {phase === 'night' && "Tell everyone to close their eyes. Waiting for Plagiarists to select their victim..."}
+          {phase === 'night' && (
+            silenceConfirmed 
+            ? "Poet silenced. Ready to announce the results to the room." 
+            : "Tell everyone to close their eyes. Waiting for Plagiarists to coordinate their target..."
+          )}
           {phase === 'end' && "The Mehfil is over. Reveal the identities and announce the winners!"}
         </p>
       </section>
@@ -385,7 +469,7 @@ export default function HostDashboard() {
                         <span className="text-sm font-bold opacity-60">(Start Timer & Reveal Logic)</span>
                     </button>
                     <p className="text-center text-gold/40 text-[10px] uppercase font-black mt-6 tracking-widest">
-                        Clicking this will reveal the objective to all players and start the 2-minute countdown.
+                        Clicking this will reveal the objective to all players and start the 2.5-minute countdown.
                     </p>
                 </div>
               )}
@@ -427,7 +511,7 @@ export default function HostDashboard() {
                     <div className="space-y-3">
                         {alivePlayers.map(p => {
                             const count = voteTallies[p.id] || 0;
-                            const percentage = (count / alivePlayers.length) * 100;
+                            const percentage = (count / (alivePlayers.length || 1)) * 100;
                             return (
                                 <div key={p.id} className="space-y-1">
                                     <div className="flex justify-between text-[10px] uppercase font-bold">
@@ -538,23 +622,36 @@ export default function HostDashboard() {
                             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                         </div>
                     </div>
-                    <button onClick={handleMissionSuccess} className="btn-premium w-full bg-emerald-900/50 text-emerald-400 border-emerald-500/30 py-5 rounded-2xl">Success: Answer Matches (+₹2000)</button>
-                    <button onClick={() => setMissionOutcome('failed')} className="btn-premium w-full bg-red-900/50 text-red-400 border-red-500/30 py-5 rounded-2xl">Failed: Incorrect or Out of Time</button>
+                    <button 
+                        onClick={handleMissionSuccess} 
+                        disabled={timeLeft > 90 || !!missionOutcome}
+                        className="btn-premium w-full bg-emerald-900/50 text-emerald-400 border-emerald-500/30 py-5 rounded-2xl disabled:opacity-20"
+                    >
+                        Success: Answer Matches (+₹2000)
+                    </button>
+                    
+                    <button 
+                        onClick={() => setMissionOutcome('failed')} 
+                        disabled={timeLeft > 0 || !!missionOutcome}
+                        className="btn-premium w-full bg-red-900/50 text-red-400 border-red-500/30 py-5 rounded-2xl disabled:opacity-20"
+                    >
+                        {timeLeft > 0 ? `Solving Phase Active...` : `Failed: Incorrect or Time Out`}
+                    </button>
                     
                     <button 
                       onClick={handleVerifySabotage}
-                      disabled={!gameState.sabotage_triggered}
-                      className="btn-premium w-full bg-red-600/20 text-red-500 border-red-600/40 py-4 rounded-2xl"
+                      disabled={timeLeft > 90 || !gameState.sabotage_triggered || !!missionOutcome}
+                      className="btn-premium w-full bg-red-600/20 text-red-500 border-red-600/40 py-4 rounded-2xl disabled:opacity-20"
                     >
                       Verify Sabotage {gameState.sabotage_triggered && "(Alert!)"}
                     </button>
 
                     <button 
                         onClick={() => handleTransition('majlis')}
-                        disabled={!missionOutcome}
+                        disabled={!missionOutcome && !potentialWinner}
                         className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
                     >
-                        Proceed to Majlis
+                        {potentialWinner ? 'Reveal Scores (Victory!)' : 'Proceed to Majlis'}
                     </button>
                 </div>
               )}
@@ -645,42 +742,82 @@ export default function HostDashboard() {
                     )}
 
                     <button 
-                        onClick={() => handleTransition('night')}
-                        disabled={!players.some(p => p.status === 'banished')} 
+                        onClick={() => potentialWinner ? handleTransition('end') : handleTransition('night')}
+                        disabled={!players.some(p => p.status === 'banished') && !potentialWinner} 
                         className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
                     >
-                        Proceed to Night
+                        {potentialWinner ? 'Reveal Scores (Victory!)' : 'Proceed to Night'}
                     </button>
                 </div>
               )}
 
               {phase === 'night' && (
                 <div className="space-y-4">
-                    <p className="text-center text-[10px] text-gray-500 italic mb-4 tracking-widest uppercase font-black">Waiting for Plagiarist choice...</p>
-                    {votes.find(v => v.round_id === 99) ? (
-                        <div className="p-6 bg-red-950/40 rounded-2xl border border-red-500/30 text-center">
-                            <p className="text-[10px] uppercase text-red-500 font-black mb-4 tracking-widest">Plagiarist Target Identified</p>
-                            <p className="text-3xl font-bold serif mb-6">{alivePlayers.find(p => p.id === votes.find(v => v.round_id === 99).target_id)?.name}</p>
-                            
-                            <button 
-                              onClick={() => handleSilence(votes.find(v => v.round_id === 99).target_id)} 
-                              disabled={silenceConfirmed}
-                              className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500"
-                            >
-                              {silenceConfirmed ? "Silence Confirmed" : "Confirm Silence"}
-                            </button>
+                    <div className="bg-black/40 p-6 rounded-2xl border border-white/10">
+                        <h3 className="text-xs uppercase font-bold text-gray-500 mb-4 tracking-widest text-center">Plagiarist Coordination</h3>
+                        <div className="space-y-3">
+                            {alivePoets.map(p => {
+                                const count = nightVoteTallies[p.id] || 0;
+                                const isConsensus = activeNightTargetId === p.id;
+                                const percentage = (count / (alivePlagiarists.length || 1)) * 100;
+                                
+                                return (
+                                    <div key={p.id} className="space-y-1">
+                                        <div className="flex justify-between text-[10px] uppercase font-bold">
+                                            <span className={isConsensus ? 'text-red-500' : ''}>{p.name} {isConsensus && '🎯'}</span>
+                                            <span>{count} Votes</span>
+                                        </div>
+                                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-500 ${isConsensus ? 'bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]' : 'bg-gray-600'}`} style={{ width: `${percentage}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {!silenceConfirmed ? (
+                        <div className="space-y-3">
+                             <p className="text-[10px] text-center text-red-500/60 uppercase font-black tracking-widest animate-pulse">
+                                {nightConsensusPlayers.length > 1 ? "Tie detected! Choose between the tied suspects." : "Waiting for Consensus..."}
+                             </p>
+                             
+                             <div className="grid grid-cols-1 gap-2">
+                                {(nightConsensusPlayers.length > 1 ? nightConsensusPlayers : (activeNightTargetId ? [players.find(p => p.id === activeNightTargetId)!] : [])).map(p => (
+                                    <button 
+                                        key={p.id}
+                                        onClick={() => handleSilence(p.id)}
+                                        className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500 text-sm font-bold uppercase tracking-widest"
+                                    >
+                                        Silence {p.name}
+                                    </button>
+                                ))}
+                             </div>
                         </div>
                     ) : (
-                        <div className="animate-pulse text-center p-12 text-gray-600 italic border-2 border-dashed border-white/5 rounded-2xl">Darkness falls...</div>
-                    )}
+                        <div className="space-y-4 animate-scale-up">
+                            <div className="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl text-center">
+                                <p className="text-[10px] uppercase text-emerald-500 font-black tracking-widest">Silence Executed</p>
+                            </div>
+                            
+                            <button 
+                                onClick={() => potentialWinner ? handleTransition('end') : handleWakeUpReveal(nightVotes[0]?.target_id || null)}
+                                disabled={gameState.is_revealing && !potentialWinner}
+                                className="btn-premium w-full bg-gold text-black py-6 rounded-2xl border-gold/50 text-lg font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(255,215,0,0.2)]"
+                            >
+                                {potentialWinner ? "Reveal Scores (Victory!)" : gameState.is_revealing ? "Reveal in Progress..." : "Wake Up & Reveal"}
+                            </button>
 
-                    <button 
-                      onClick={() => handleTransition('mission')}
-                      disabled={!silenceConfirmed}
-                      className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
-                    >
-                      Wake Up & Reveal
-                    </button>
+                            {gameState.is_revealing && (
+                                <button 
+                                    onClick={() => handleTransition(potentialWinner ? 'end' : 'mission')}
+                                    className="btn-premium w-full bg-white text-black py-4 rounded-xl border-gray-300 animate-fade-enter-active"
+                                >
+                                    {potentialWinner ? "End Game & Reveal Scores" : "Dismiss Reveal & Next Mission"}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
               )}
 

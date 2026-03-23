@@ -19,6 +19,9 @@ export interface GameState {
   mission_timer_end: string | null; // ISO string
   tie_protocol?: 'none' | 'decree' | 'revote' | 'spin';
   tied_player_ids?: string[]; // Player UUIDs
+  reveal_target_id?: string | null;
+  is_revealing?: boolean;
+  sabotage_used?: boolean;
 }
 
 export interface Player {
@@ -131,7 +134,8 @@ export const startMission = async (roomId: string) => {
 
   await supabase.from('game_rooms').update({ 
     mission_timer_end: timerEnd.toISOString(),
-    sabotage_triggered: false 
+    sabotage_triggered: false,
+    sabotage_used: false
   }).eq('id', roomId);
 };
 
@@ -140,7 +144,7 @@ export const evaluateWinCondition = async (roomId: string) => {
     .from('players')
     .select('role, status')
     .eq('room_id', roomId)
-    .eq('status', 'alive');
+    .in('status', ['alive', 'silenced']);
 
   if (error || !players) return null;
 
@@ -171,7 +175,7 @@ export const resetGame = async (roomId: string) => {
   // 2. Reset players
   await supabase
     .from('players')
-    .update({ role: 'sukhan_war', status: 'alive', private_gold: 0 })
+    .update({ role: 'sukhan_war', status: 'alive' })
     .eq('room_id', roomId);
 
   // 3. Clear votes
@@ -214,5 +218,39 @@ export const assignRoles = async (roomId: string, manualTraitorCount?: number) =
       .from('players')
       .update({ role: update.role })
       .eq('id', update.id);
+  }
+};
+
+export const liquidatePot = async (roomId: string) => {
+  // 1. Fetch room data (pot and faction)
+  const { data: room, error: roomError } = await supabase
+    .from('game_rooms')
+    .select('eidi_pot, winner_faction')
+    .eq('id', roomId)
+    .single();
+
+  if (roomError || !room) throw roomError;
+  if (room.winner_faction !== 'poets') return; // Only poets distribute the collective pot
+
+  const finalPot = room.eidi_pot;
+  
+  // 2. Fetch alive poets (winners)
+  const { data: winners, error: winnersError } = await supabase
+    .from('players')
+    .select('id, private_gold')
+    .eq('room_id', roomId)
+    .eq('role', 'sukhan_war')
+    .eq('status', 'alive');
+
+  if (winnersError || !winners) throw winnersError;
+
+  if (winners.length > 0) {
+    const share = Math.floor(finalPot / winners.length);
+    for (const winner of winners) {
+      await supabase
+        .from('players')
+        .update({ private_gold: (winner.private_gold || 0) + share })
+        .eq('id', winner.id);
+    }
   }
 };
