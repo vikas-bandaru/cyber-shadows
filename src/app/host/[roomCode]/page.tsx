@@ -1,0 +1,615 @@
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
+import { useGameState } from '@/hooks/useGameState';
+import { usePlayers } from '@/hooks/usePlayers';
+import { advancePhase, assignRoles, evaluateWinCondition, resetGame, deleteRoom, startMission, GamePhase, Player, Mission } from '@/lib/game-logic';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
+
+export default function HostDashboard() {
+  const { roomCode } = useParams() as { roomCode: string };
+  const router = useRouter();
+  const { gameState, loading: gameLoading } = useGameState(roomCode);
+  const phase = gameState?.current_phase || 'lobby';
+  const roomId = gameState?.id;
+  const { players, loading: playersLoading } = usePlayers(roomId || '');
+  
+  const [votes, setVotes] = useState<any[]>([]);
+  const [activeMission, setActiveMission] = useState<Mission | null>(null);
+  const [missionOutcome, setMissionOutcome] = useState<'success' | 'failed' | null>(null);
+  const [isVotesLocked, setIsVotesLocked] = useState(false);
+  const [banishedPlayerId, setBanishedPlayerId] = useState<string | null>(null);
+  const [silenceConfirmed, setSilenceConfirmed] = useState(false);
+  const [origin, setOrigin] = useState('');
+  const [devPlagiaristCount, setDevPlagiaristCount] = useState(1);
+  const [showDevSettings, setShowDevSettings] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [hostName, setHostName] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHostName(localStorage.getItem('playerName'));
+  }, []);
+
+  const isHostAPlayer = useMemo(() => {
+    return players.some(p => p.name === hostName);
+  }, [players, hostName]);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    if (!gameState?.mission_timer_end) {
+        setTimeLeft(0);
+        return;
+    }
+    
+    const target = new Date(gameState.mission_timer_end).getTime();
+    const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const diff = Math.max(0, Math.floor((target - now) / 1000));
+        setTimeLeft(diff);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [gameState?.mission_timer_end, gameState?.current_phase]);
+
+  // Fetch Mission Details
+  useEffect(() => {
+    if (gameState?.current_mission_id) {
+      const fetchMission = async () => {
+        const { data } = await supabase
+          .from('missions')
+          .select('*')
+          .eq('id', gameState.current_mission_id)
+          .single();
+        if (data) setActiveMission(data);
+      };
+      fetchMission();
+    } else {
+      setActiveMission(null);
+    }
+  }, [gameState?.current_mission_id]);
+
+  useEffect(() => {
+    if (roomId) {
+      const voteChannel = supabase
+        .channel(`votes:${roomId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `room_id=eq.${roomId}` }, (payload) => {
+          setVotes(prev => [...prev, payload.new]);
+        })
+        .subscribe();
+
+      const fetchInitialVotes = async () => {
+        const { data } = await supabase.from('votes').select('*').eq('room_id', roomId);
+        if (data) setVotes(data);
+      };
+      fetchInitialVotes();
+
+      return () => { supabase.removeChannel(voteChannel); };
+    }
+  }, [roomId]);
+
+  // Derived Data
+  const alivePlayers = players.filter(p => p.status === 'alive');
+  const alivePoets = players.filter(p => p.status === 'alive' && p.role === 'sukhan_war');
+  const alivePlagiarists = players.filter(p => p.status === 'alive' && p.role === 'naqal_baaz');
+  
+  const voteTallies = useMemo(() => {
+    const tallies: Record<string, number> = {};
+    votes.forEach(v => {
+      // Only count actual votes (round_id >= 1 or 99 for night)
+      if (v.round_id >= 1 || v.round_id === 99) {
+        tallies[v.target_id] = (tallies[v.target_id] || 0) + 1;
+      }
+    });
+    return tallies;
+  }, [votes]);
+
+  const maxVotes = Math.max(...Object.values(voteTallies), 0);
+  const mostVotedPlayers = alivePlayers.filter(p => (voteTallies[p.id] || 0) === maxVotes && maxVotes > 0);
+
+  const hasPlayedRef = useRef(false);
+
+  useEffect(() => {
+    // Reset the buzzer flag when a new mission starts or phase changes
+    hasPlayedRef.current = false;
+  }, [gameState?.mission_timer_end, phase]);
+
+  const playBuzzer = async () => {
+    if (hasPlayedRef.current) return;
+    hasPlayedRef.current = true;
+    
+    console.log("🔊 MISSION TIMER OVER - PLAYING BUZZER");
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 1.5);
+    } catch (err) {
+      console.error("Audio Playback Error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (phase === 'mission' && timeLeft === 0 && !hasPlayedRef.current && gameState?.mission_timer_end) {
+      const now = Date.now();
+      const target = new Date(gameState.mission_timer_end).getTime();
+      // Only play if the timer has effectively reached zero naturally
+      if (now >= target - 1000) {
+        playBuzzer();
+      }
+    }
+  }, [timeLeft, phase, gameState?.mission_timer_end]);
+
+  // FSM Phase Logic
+  const handleTransition = async (nextPhase: GamePhase) => {
+    if (!roomId) return;
+    
+    try {
+        // Auto Win Condition Check before critical transitions
+        if (nextPhase === 'night' || (gameState?.current_phase === 'night' && nextPhase === 'mission')) {
+            const winner = await evaluateWinCondition(roomId);
+            if (winner) {
+                await supabase.from('game_rooms').update({ current_phase: 'end', winner_faction: winner }).eq('id', roomId);
+                return;
+            }
+        }
+
+        // Phase Cleanup
+        if (nextPhase === 'majlis' || nextPhase === 'night' || nextPhase === 'mission') {
+            await supabase.from('votes').delete().eq('room_id', roomId);
+            setVotes([]);
+            setIsVotesLocked(false);
+            setBanishedPlayerId(null);
+            setMissionOutcome(null);
+            setSilenceConfirmed(false);
+        }
+
+        await advancePhase(roomId, nextPhase);
+    } catch (err: any) {
+        console.error("Transition Error:", err);
+        alert(`Error during ${nextPhase} transition: ${err.message || JSON.stringify(err)}`);
+    }
+  };
+
+  const handleAssignRoles = async () => {
+    const minRequired = gameState?.is_dev_mode ? (gameState?.min_players_required ?? 1) : 8;
+    if (players.length < minRequired) return alert(`Strict Rule: ${minRequired} players required to start.`);
+    
+    const manualCount = gameState?.is_dev_mode ? devPlagiaristCount : undefined;
+    await assignRoles(roomId!, manualCount);
+    await handleTransition('reveal');
+  };
+
+  const toggleDevMode = async (enabled: boolean) => {
+    if (!roomId) return;
+    await supabase.from('game_rooms').update({ is_dev_mode: enabled }).eq('id', roomId);
+  };
+
+  const updateMinPlayers = async (count: number) => {
+    if (!roomId) return;
+    await supabase.from('game_rooms').update({ min_players_required: count }).eq('id', roomId);
+  };
+
+  const handleBanish = async () => {
+    if (!banishedPlayerId) return;
+    await supabase.from('players').update({ status: 'banished' }).eq('id', banishedPlayerId);
+  };
+
+  const handleSilence = async (targetId: string) => {
+    await supabase.from('players').update({ status: 'silenced' }).eq('id', targetId);
+    setSilenceConfirmed(true);
+  };
+
+  const handleVerifySabotage = async () => {
+    // Award gold to plagiarists and update pot
+    const plagiarists = players.filter(p => p.role === 'naqal_baaz' && p.status === 'alive');
+    for (const p of plagiarists) {
+      await supabase.from('players').update({ private_gold: (p.private_gold || 0) + 500 }).eq('id', p.id);
+    }
+    await supabase.from('game_rooms').update({ eidi_pot: (gameState!.eidi_pot || 0) + 1000, sabotage_triggered: false }).eq('id', roomId);
+  };
+
+  const handleMissionSuccess = async () => {
+    await supabase.from('game_rooms').update({ eidi_pot: (gameState!.eidi_pot || 0) + 2000 }).eq('id', roomId);
+    setMissionOutcome('success');
+  };
+
+  const handleStartMission = async () => {
+    if (!roomId) return;
+    await startMission(roomId);
+  };
+
+  const handleEmergencyReset = async () => {
+    if (!roomId) return;
+    if (confirm("🚨 EMERGENCY RESET: This will permanently delete this room and all its data. Are you sure?")) {
+        await deleteRoom(roomId);
+        localStorage.removeItem('playerName');
+        localStorage.removeItem('playerId');
+        localStorage.removeItem('roomId');
+        localStorage.removeItem('isHost');
+        router.push('/');
+    }
+  };
+
+  if (gameLoading || playersLoading) return <div className="p-10 text-white">Loading God View...</div>;
+  if (!gameState) return <div className="p-10 text-white">Room {roomCode} not found.</div>;
+
+  return (
+    <main className="min-h-screen bg-crimson-black text-white p-4 lg:p-10 space-y-6">
+      
+      {/* HEADER: Room Code & Public View */}
+      <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10 gap-4">
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col">
+            <div className="text-[10px] uppercase font-black text-gold/40 tracking-widest mb-1">Room Code</div>
+            <span className="text-3xl font-black text-gold leading-none">{roomCode}</span>
+          </div>
+          <div className="h-10 w-[1px] bg-white/10" />
+          <div className="flex flex-col">
+            <div className="text-[10px] uppercase font-black text-white/40 tracking-widest mb-1">Join Link</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-white/60">{origin}/?code={roomCode}</span>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(`${origin}/?code=${roomCode}`);
+                  alert('Link copied to clipboard!');
+                }}
+                className="btn-premium bg-white/10 px-3 py-1.5 rounded-lg border-white/20 hover:bg-white/20"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {isHostAPlayer && (
+            <button 
+              onClick={() => window.open(`/play/${roomCode}`, '_blank')}
+              className="btn-premium bg-emerald-600/10 text-emerald-500 border-emerald-500/40 px-6 py-4 rounded-full shadow-lg"
+            >
+              Open My Player View 🖋️
+            </button>
+          )}
+          <button 
+            onClick={() => window.open(`/display/${roomCode}`, '_blank')}
+            className="btn-premium bg-gold/10 text-gold border-gold/40 px-6 py-4 rounded-full shadow-lg"
+          >
+            Open Public Display 📺
+          </button>
+        </div>
+      </div>
+      
+      {/* 1. THE TELEPROMPTER */}
+      <section className="bg-gold text-crimson-black p-6 rounded-2xl shadow-xl border-4 border-gold/50 animate-bounce-subtle">
+        <h3 className="text-xs uppercase font-black tracking-widest mb-1 opacity-70">Sultan's Teleprompter</h3>
+        <p className="text-2xl lg:text-3xl font-bold serif leading-tight">
+          {phase === 'lobby' && "Wait for 8 poets. Once gathered, click 'Assign Roles'."}
+          {phase === 'reveal' && "Role Reveal: Ensure total silence. Players check their fates now."}
+          {phase === 'mission' && !gameState.mission_timer_end && "Announce: 60s blindfold (Poets) / 60s prep (Plagiarists). Final 90s for all to solve. Click Begin below."}
+          {phase === 'mission' && gameState.mission_timer_end && "Mission in progress. Poets are solving. Elect a Speaker to state the final answer quietly to you."}
+          {phase === 'majlis' && "Majlis Open: Debate and cast votes to banish suspects."}
+          {phase === 'night' && "Tell everyone to close their eyes. Waiting for Plagiarists to select their victim..."}
+          {phase === 'end' && "The Mehfil is over. Reveal the identities and announce the winners!"}
+        </p>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* 2. THE DATA VIEW */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Active Mission Display */}
+          {phase === 'mission' && activeMission && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-emerald-900/20 border border-emerald-500/30 p-6 rounded-3xl">
+                <h4 className="text-xs uppercase font-black text-emerald-500 mb-2 tracking-widest">Public: Read Aloud</h4>
+                <h3 className="text-2xl font-bold serif mb-2 text-white">{activeMission.title}</h3>
+                <p className="text-emerald-100/70 italic">"{activeMission.public_goal}"</p>
+              </div>
+              <div className="bg-red-900/20 border border-red-500/30 p-6 rounded-3xl">
+                <h4 className="text-xs uppercase font-black text-red-500 mb-2 tracking-widest">Classified: Classified</h4>
+                <p className="text-xl font-bold text-red-500 serif italic">"{activeMission.secret_sabotage}"</p>
+              </div>
+              
+              {/* THE SOURCE OF TRUTH CARD */}
+              <div className="md:col-span-2 bg-emerald-950/40 border-4 border-emerald-500 rounded-3xl p-8 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-1000">👑</div>
+                  <h4 className="text-xs uppercase font-black text-emerald-500 mb-4 tracking-[0.3em]">The Source of Truth: Answer Key</h4>
+                  <p className="text-3xl lg:text-4xl font-black text-white serif italic leading-tight">
+                      {activeMission.host_answer_key || "No answer key provided for this mission."}
+                  </p>
+              </div>
+
+              {/* START MISSION BUTTON (Only if timer not started) */}
+              {!gameState.mission_timer_end && (
+                <div className="md:col-span-2 py-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <button 
+                        onClick={handleStartMission}
+                        className="w-full bg-gold hover:bg-gold-light text-crimson-black py-8 rounded-3xl text-3xl font-black uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(255,215,0,0.3)] border-4 border-white/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4"
+                    >
+                        <span>🔱 Begin Mission</span>
+                        <span className="text-sm font-bold opacity-60">(Start Timer & Reveal Logic)</span>
+                    </button>
+                    <p className="text-center text-gold/40 text-[10px] uppercase font-black mt-6 tracking-widest">
+                        Clicking this will reveal the objective to all players and start the 2-minute countdown.
+                    </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <section className="glass p-6 rounded-3xl border border-white/10 h-full">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold serif text-gold">Gathered Poets ({players.length}/8)</h2>
+                <div className="text-sm font-mono text-gold/60">POT: ₹{gameState.eidi_pot}</div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {players.map(p => (
+                <div key={p.id} className={`p-4 rounded-xl border transition-all ${
+                  p.status === 'alive' ? 'bg-white/5 border-white/10' : 'bg-black/40 border-white/5 grayscale opacity-50'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                        <div className="font-bold serif flex items-center gap-2">
+                          {p.name}
+                          {p.name === hostName && (
+                            <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-gold/20">Host</span>
+                          )}
+                        </div>
+                        <div className="text-[10px] uppercase text-gray-500">
+                            {p.role} • {p.status}
+                        </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Voting Chart */}
+            {phase === 'majlis' && (
+                <div className="mt-8 pt-8 border-t border-white/10">
+                    <h3 className="text-xs uppercase font-bold text-gray-500 mb-4 tracking-widest">Real-time Vote Tally ({votes.length}/{alivePlayers.length})</h3>
+                    <div className="space-y-3">
+                        {alivePlayers.map(p => {
+                            const count = voteTallies[p.id] || 0;
+                            const percentage = (count / alivePlayers.length) * 100;
+                            return (
+                                <div key={p.id} className="space-y-1">
+                                    <div className="flex justify-between text-[10px] uppercase font-bold">
+                                        <span>{p.name}</span>
+                                        <span>{count} Votes</span>
+                                    </div>
+                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full bg-gold transition-all duration-500" style={{ width: `${percentage}%` }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+          </section>
+        </div>
+
+        {/* 3. THE CONTROL PANEL */}
+        <div className="space-y-6">
+          <section className="glass p-6 rounded-3xl border border-gold/20 bg-gold/5 flex flex-col h-full">
+            <h2 className="text-xl font-bold serif text-gold mb-6">Execution Panel</h2>
+            
+            <div className="flex-1 space-y-3">
+              {phase === 'lobby' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <button 
+                      onClick={() => setShowDevSettings(!showDevSettings)}
+                      className="text-[10px] uppercase font-black text-gold/60 hover:text-gold transition-all flex items-center gap-2"
+                    >
+                      {showDevSettings ? 'Hide Settings' : '⚙️ Dev Settings'}
+                    </button>
+                    {gameState?.is_dev_mode && (
+                      <span className="text-[10px] bg-red-600/20 text-red-500 px-2 py-0.5 rounded-full font-black uppercase tracking-widest border border-red-500/20">Dev Mode Active</span>
+                    )}
+                  </div>
+
+                  {showDevSettings && (
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4 animate-fade-enter-active mb-6">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-gray-400">Enable Dev Mode</span>
+                        <input 
+                          type="checkbox" 
+                          checked={gameState?.is_dev_mode || false}
+                          onChange={(e) => toggleDevMode(e.target.checked)}
+                          className="w-5 h-5 accent-emerald-500"
+                        />
+                      </div>
+
+                      {gameState?.is_dev_mode && (
+                        <>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] font-black uppercase">
+                              <span>Min Players to Start</span>
+                              <span>{gameState.min_players_required}</span>
+                            </div>
+                            <input 
+                              type="range" min="1" max="8" 
+                              value={gameState.min_players_required}
+                              onChange={(e) => updateMinPlayers(parseInt(e.target.value))}
+                              className="w-full accent-gold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] font-black uppercase">
+                              <span>Plagiarist Count</span>
+                              <span>{devPlagiaristCount}</span>
+                            </div>
+                            <input 
+                              type="range" min="1" max={Math.max(1, players.length - 1)} 
+                              value={devPlagiaristCount}
+                              onChange={(e) => setDevPlagiaristCount(parseInt(e.target.value))}
+                              className="w-full accent-red-500"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={handleAssignRoles}
+                    disabled={players.length < (gameState?.is_dev_mode ? (gameState?.min_players_required ?? 1) : 8)}
+                    className="btn-premium w-full bg-emerald-600 py-6 rounded-2xl shadow-2xl border-emerald-500/50 text-lg"
+                  >
+                    {players.length < (gameState?.is_dev_mode ? (gameState?.min_players_required ?? 1) : 8) 
+                      ? `Need ${ (gameState?.is_dev_mode ? (gameState?.min_players_required ?? 1) : 8) } Players` 
+                      : 'Assign Roles & Start'}
+                  </button>
+                </div>
+              )}
+
+              {phase === 'reveal' && (
+                <button 
+                    onClick={() => handleTransition('mission')}
+                    className="btn-premium w-full bg-gold text-crimson-black py-6 rounded-2xl border-gold/50 text-lg"
+                >
+                    Begin First Mission
+                </button>
+              )}
+
+              {phase === 'mission' && (
+                <div className="space-y-4">
+                    <div className="bg-black/40 p-6 rounded-2xl border border-white/10 text-center mb-4">
+                        <div className="text-[10px] uppercase font-black text-gold/40 tracking-widest mb-1">Time Remaining</div>
+                        <div className={`text-5xl font-black serif tabular-nums ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                        </div>
+                    </div>
+                    <button onClick={handleMissionSuccess} className="btn-premium w-full bg-emerald-900/50 text-emerald-400 border-emerald-500/30 py-5 rounded-2xl">Success: Answer Matches (+₹2000)</button>
+                    <button onClick={() => setMissionOutcome('failed')} className="btn-premium w-full bg-red-900/50 text-red-400 border-red-500/30 py-5 rounded-2xl">Failed: Incorrect or Out of Time</button>
+                    
+                    <button 
+                      onClick={handleVerifySabotage}
+                      disabled={!gameState.sabotage_triggered}
+                      className="btn-premium w-full bg-red-600/20 text-red-500 border-red-600/40 py-4 rounded-2xl"
+                    >
+                      Verify Sabotage {gameState.sabotage_triggered && "(Alert!)"}
+                    </button>
+
+                    <button 
+                        onClick={() => handleTransition('majlis')}
+                        disabled={!missionOutcome}
+                        className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
+                    >
+                        Proceed to Majlis
+                    </button>
+                </div>
+              )}
+
+              {phase === 'majlis' && (
+                <div className="space-y-4">
+                    <button 
+                        onClick={() => setIsVotesLocked(true)}
+                        disabled={votes.length < alivePlayers.length || isVotesLocked}
+                        className="btn-premium w-full bg-gold/20 text-gold border-gold/40 py-5 rounded-2xl"
+                    >
+                        {isVotesLocked ? "Votes Locked" : "Lock Votes & Reveal"}
+                    </button>
+                    
+                    {isVotesLocked && (
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                            <p className="text-[10px] text-center text-gray-500 uppercase font-black tracking-widest">Select Player to Banish</p>
+                            {mostVotedPlayers.map(p => (
+                                <button key={p.id} onClick={() => setBanishedPlayerId(p.id)} className={`btn-premium w-full py-4 rounded-xl border ${banishedPlayerId === p.id ? 'bg-red-600 border-red-400' : 'bg-white/5 border-white/10'}`}>
+                                    Banish {p.name}
+                                </button>
+                            ))}
+                            <button 
+                                onClick={handleBanish}
+                                disabled={!banishedPlayerId}
+                                className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500 disabled:opacity-20"
+                            >
+                                Confirm Banishment
+                            </button>
+                        </div>
+                    )}
+
+                    <button 
+                        onClick={() => handleTransition('night')}
+                        disabled={!players.some(p => p.status === 'banished')} 
+                        className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
+                    >
+                        Proceed to Night
+                    </button>
+                </div>
+              )}
+
+              {phase === 'night' && (
+                <div className="space-y-4">
+                    <p className="text-center text-[10px] text-gray-500 italic mb-4 tracking-widest uppercase font-black">Waiting for Plagiarist choice...</p>
+                    {votes.find(v => v.round_id === 99) ? (
+                        <div className="p-6 bg-red-950/40 rounded-2xl border border-red-500/30 text-center">
+                            <p className="text-[10px] uppercase text-red-500 font-black mb-4 tracking-widest">Plagiarist Target Identified</p>
+                            <p className="text-3xl font-bold serif mb-6">{alivePlayers.find(p => p.id === votes.find(v => v.round_id === 99).target_id)?.name}</p>
+                            
+                            <button 
+                              onClick={() => handleSilence(votes.find(v => v.round_id === 99).target_id)} 
+                              disabled={silenceConfirmed}
+                              className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500"
+                            >
+                              {silenceConfirmed ? "Silence Confirmed" : "Confirm Silence"}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="animate-pulse text-center p-12 text-gray-600 italic border-2 border-dashed border-white/5 rounded-2xl">Darkness falls...</div>
+                    )}
+
+                    <button 
+                      onClick={() => handleTransition('mission')}
+                      disabled={!silenceConfirmed}
+                      className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
+                    >
+                      Wake Up & Reveal
+                    </button>
+                </div>
+              )}
+
+              {phase === 'end' && (
+                <div className="space-y-4">
+                    <div className="p-8 bg-gold/20 rounded-3xl border-4 border-gold/40 text-center mb-6 shadow-2xl">
+                        <h2 className="text-5xl font-black text-gold serif mb-3 uppercase tracking-tighter italic">{gameState.winner_faction} WIN!</h2>
+                        <p className="text-gold/60 uppercase text-[10px] font-black tracking-widest border-t border-gold/20 pt-4">Final Eidi Pot: ₹{gameState.eidi_pot}</p>
+                    </div>
+                    <button onClick={() => resetGame(roomId!)} className="btn-premium w-full bg-emerald-600 py-5 rounded-2xl border-emerald-500 shadow-xl">Play Again</button>
+                    <button onClick={() => deleteRoom(roomId!)} className="btn-premium w-full bg-white/5 text-gray-500 py-4 rounded-xl border-white/10">End Gathering</button>
+                </div>
+              )}
+            </div>
+
+            <button 
+                onClick={handleEmergencyReset}
+                className="mt-10 pt-4 border-t border-white/5 text-[9px] uppercase tracking-[0.4em] text-gray-700 hover:text-red-500 transition-colors text-center w-full"
+            >
+                Emergency Reset
+            </button>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
+}

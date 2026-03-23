@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --emerald-deep: #064E3B;
+  --crimson-black: #1A0505;
+  --gold-accent: #D4AF37;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ffffff;
+    --gold: #FFD700;
+    --crimson-black: #1A0A0A;
+    --emerald-deep: #06402B;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Outfit', sans-serif;
+}
+
+h1, h2, h3, .serif {
+  font-family: 'Lora', serif;
+}
+
+.bg-emerald-deep {
+  background-color: var(--emerald-deep);
+}
+
+.bg-crimson-black {
+  background-color: var(--crimson-black);
+}
+
+.text-gold {
+  color: var(--gold-accent);
+}
+
+.border-gold {
+  border-color: var(--gold-accent);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bento-card {
+  border-radius: 1rem; /* rounded-2xl */
+  padding: 1.5rem; /* p-6 */
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.bento-card:hover {
+  transform: scale(1.02);
+}
+
+/* Custom transitions */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
