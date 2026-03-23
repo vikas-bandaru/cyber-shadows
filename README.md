@@ -29,8 +29,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🎭 Roles & Access
 The application is designed to be played across multiple devices simultaneously:
-- **Host Dashboard**: Control the game flow and manage transitions.
-- **Player Mobile View**: Each player's private screen for role reveal and actions.
+- **Host Dashboard**: Control the game flow with the Sultan's Teleprompter—a live guide for first-time hosts.
+- **Player Mobile View**: Each player's private screen, fully optimized for touch with 44px targets and session recovery (Refresh Guard).
 - **Public Display**: The "Source of Truth" showing collective status and cinematic reveals.
 
 ## 🛠️ Tech Stack

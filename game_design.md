@@ -27,6 +27,7 @@
 The engine is built on a **State-Driven Sync** model:
 - **Global Phase Manager:** A single `current_phase` flag in the database dictates the UI layout for all participants.
 - **Persistent Wealth Engine:** `Private Gold` tracks individual earnings (stolen or awarded), while the `Eidi Pot` tracks the collective pool and potential shares.
+- **Session Resilience (Refresh Guard):** Identity (`playerId`) and role reveal status are anchored in `localStorage`, allowing the engine to re-sync a player's exact state (including Silenced or Banished views) after a browser refresh.
 - **Liquidation Logic:** A dedicated function computes and distributes the remaining pot to all surviving Poets upon victory.
 
 ## 🏰 Parallels with "The Traitors"
