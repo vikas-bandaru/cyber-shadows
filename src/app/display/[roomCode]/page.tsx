@@ -85,39 +85,39 @@ export default function PublicDisplay() {
   const joinUrl = `${origin}/?code=${roomCode}`;
 
   return (
-    <main className="min-h-screen bg-crimson-black text-white flex flex-col overflow-hidden">
+    <main className="h-screen bg-crimson-black text-white flex flex-col overflow-hidden">
       
-      <div className="h-2 bg-gradient-to-r from-gold via-emerald-deep to-gold w-full" />
+      <div className="h-1 bg-gradient-to-r from-gold via-emerald-deep to-gold w-full" />
 
-      <header className="p-8 lg:p-16 flex justify-between items-start">
-        <div className="space-y-4">
-            <h1 className="text-7xl lg:text-9xl font-black serif text-gold tracking-tighter uppercase leading-none italic drop-shadow-2xl">Mehfil-e-Khaas</h1>
+      <header className="p-4 lg:p-10 flex justify-between items-start shrink-0">
+        <div className="space-y-2">
+            <h1 className="text-5xl lg:text-7xl font-black serif text-gold tracking-tighter uppercase leading-none italic drop-shadow-2xl">Mehfil-e-Khaas</h1>
             <div className="flex items-center gap-4 opacity-50">
-                <span className="h-[1px] w-20 bg-white" />
-                <span className="uppercase tracking-[0.5em] text-sm font-bold">Social Deduction Engine</span>
+                <span className="h-[1px] w-12 bg-white" />
+                <span className="uppercase tracking-[0.5em] text-[10px] font-bold">Social Deduction Engine</span>
             </div>
         </div>
         
-        <div className="text-right glass p-8 rounded-3xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5">
-            <div className="text-[10px] uppercase font-black text-gold/60 tracking-widest mb-1">Room Code</div>
-            <div className="text-7xl font-black tracking-tighter text-white">{roomCode}</div>
+        <div className="text-right glass p-4 lg:p-6 rounded-2xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5 max-w-[150px]">
+            <div className="text-[8px] uppercase font-black text-gold/60 tracking-widest mb-1">Room Code</div>
+            <div className="text-5xl font-black tracking-tighter text-white">{roomCode}</div>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center text-center p-10 relative">
         
         {phase === 'lobby' && (
-            <div className="space-y-12 animate-fade-enter-active">
-                <div className="text-8xl animate-bounce-slow drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]">🖋️</div>
-                <h2 className="text-5xl lg:text-7xl font-bold serif text-gold italic">Gathering the Poets...</h2>
+            <div className="space-y-8 animate-fade-enter-active">
+                <div className="text-6xl animate-bounce-slow drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]">🖋️</div>
+                <h2 className="text-4xl lg:text-6xl font-bold serif text-gold italic">Gathering the Poets...</h2>
                 <div className="flex gap-4 justify-center">
                     {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className={`w-8 h-8 rounded-full border-2 transition-all duration-700 ${players[i] ? 'bg-gold border-gold scale-125 shadow-[0_0_15px_rgba(255,215,0,0.5)]' : 'bg-white/5 border-white/20'}`} />
+                        <div key={i} className={`w-6 h-6 rounded-full border-2 transition-all duration-700 ${players[i] ? 'bg-gold border-gold scale-125 shadow-[0_0_15px_rgba(255,215,0,0.5)]' : 'bg-white/5 border-white/20'}`} />
                     ))}
                 </div>
                 <div className="space-y-2">
-                    <p className="text-white/40 uppercase tracking-[0.3em] font-black text-sm">Join the Mehfil at</p>
-                    <p className="text-gold font-mono text-2xl lg:text-4xl font-black bg-white/5 px-8 py-4 rounded-2xl border border-white/10 select-all cursor-pointer hover:bg-white/10 transition-all">
+                    <p className="text-white/40 uppercase tracking-[0.3em] font-black text-[10px]">Join the Mehfil at</p>
+                    <p className="text-gold font-mono text-xl lg:text-3xl font-black bg-white/5 px-6 py-3 rounded-xl border border-white/10 select-all cursor-pointer hover:bg-white/10 transition-all">
                         {joinUrl.replace('http://', '').replace('https://', '')}
                     </p>
                 </div>
@@ -125,29 +125,29 @@ export default function PublicDisplay() {
         )}
 
         {phase === 'reveal' && (
-            <div className="space-y-8 animate-scale-up">
-                <h2 className="text-6xl lg:text-8xl font-black italic serif text-emerald-100 uppercase tracking-tighter">The Fate is Sealed</h2>
-                <div className="h-[2px] w-48 bg-gold mx-auto opacity-30" />
-                <p className="text-gold/60 text-xl uppercase tracking-[0.5em] font-black">Check your screens in absolute silence</p>
+            <div className="space-y-6 animate-scale-up">
+                <h2 className="text-5xl lg:text-7xl font-black italic serif text-emerald-100 uppercase tracking-tighter">The Fate is Sealed</h2>
+                <div className="h-[1px] w-32 bg-gold mx-auto opacity-30" />
+                <p className="text-gold/60 text-lg uppercase tracking-[0.5em] font-black">Check your screens in absolute silence</p>
             </div>
         )}
 
         {phase === 'mission' && (
-            <div className="space-y-10 animate-fade-enter-active max-w-4xl text-center">
+            <div className="space-y-6 animate-fade-enter-active max-w-4xl text-center">
                 {!gameState.mission_timer_end ? (
-                    <div className="space-y-12 py-20">
-                        <div className="text-[12rem] animate-bounce-slow drop-shadow-[0_0_80px_rgba(255,215,0,0.3)] select-none">🔱</div>
-                        <div className="space-y-6">
-                            <h2 className="text-6xl lg:text-8xl font-black italic serif text-gold uppercase tracking-tighter">Preparing the Logic...</h2>
-                            <p className="text-white/40 text-2xl uppercase tracking-[0.5em] font-black">The Sultan is selecting the poetic challenge</p>
+                    <div className="space-y-8 py-10">
+                        <div className="text-8xl animate-bounce-slow drop-shadow-[0_0_80px_rgba(255,215,0,0.3)] select-none">🔱</div>
+                        <div className="space-y-4">
+                            <h2 className="text-5xl lg:text-7xl font-black italic serif text-gold uppercase tracking-tighter">Preparing the Logic...</h2>
+                            <p className="text-white/40 text-xl uppercase tracking-[0.5em] font-black">The Sultan is selecting the poetic challenge</p>
                         </div>
                     </div>
                 ) : timeLeft > 90 ? (
-                    <div className="space-y-12 py-20 animate-pulse">
-                        <div className="text-[12rem] select-none opacity-20">🌙</div>
-                        <div className="space-y-6">
-                            <h2 className="text-6xl lg:text-9xl font-black italic serif text-white uppercase tracking-widest">Close Your Eyes</h2>
-                            <p className="text-gold/40 text-2xl uppercase tracking-[0.5em] font-black">The Mehfil is reflected in silence...</p>
+                    <div className="space-y-8 py-10 animate-pulse">
+                        <div className="text-8xl select-none opacity-20">🌙</div>
+                        <div className="space-y-4">
+                            <h2 className="text-5xl lg:text-7xl font-black italic serif text-white uppercase tracking-widest">Close Your Eyes</h2>
+                            <p className="text-gold/40 text-xl uppercase tracking-[0.5em] font-black">The Mehfil is reflected in silence...</p>
                             <div className="text-8xl font-black text-gold mt-10 serif italic">
                                 {timeLeft - 90}s
                             </div>
@@ -156,17 +156,16 @@ export default function PublicDisplay() {
                 ) : (
                     <>
                         <div className="flex flex-col items-center gap-6 mb-10">
-                            <h2 className="text-4xl uppercase tracking-[0.5em] text-gold font-black opacity-40">Mission Count Down</h2>
-                            <div className={`text-[12rem] font-black leading-none italic serif transition-all duration-500 shadow-gold/20 drop-shadow-2xl ${timeLeft <= 10 ? 'text-red-500 animate-pulse scale-110' : 'text-white'}`}>
+                             <h2 className="text-2xl uppercase tracking-[0.5em] text-gold font-black opacity-40">Mission Count Down</h2>
+                            <div className={`text-[8rem] font-black leading-none italic serif transition-all duration-500 shadow-gold/20 drop-shadow-2xl ${timeLeft <= 10 ? 'text-red-500 animate-pulse scale-105' : 'text-white'}`}>
                                 {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                             </div>
                         </div>
-                        
-                        <div className="glass p-20 rounded-[4rem] border-4 border-gold/20 bg-white/5 relative overflow-hidden group shadow-2xl">
+                                                <div className="glass p-10 lg:p-14 rounded-[3rem] border-4 border-gold/20 bg-white/5 relative overflow-hidden group shadow-2xl">
                             <div className="absolute inset-0 bg-gold/5 animate-pulse" />
                             <div className="relative z-10">
-                                <div className="text-6xl mb-12 opacity-80 group-hover:scale-110 transition-transform duration-1000">🔱</div>
-                                <p className="text-4xl lg:text-6xl font-bold serif leading-tight text-white mb-6 italic">Watch closely for any sabotage in the verse...</p>
+                                <div className="text-4xl mb-6 opacity-80 group-hover:scale-110 transition-transform duration-1000">🔱</div>
+                                <p className="text-3xl lg:text-4xl font-bold serif leading-tight text-white mb-4 italic">Watch closely for any sabotage in the verse...</p>
                             </div>
                         </div>
                     </>
@@ -250,35 +249,34 @@ export default function PublicDisplay() {
         )}
 
         {phase === 'night' && (
-            <div className="space-y-8 animate-pulse text-gray-500">
-                <div className="text-[10rem] mb-10 opacity-30 select-none">🌙</div>
-                <h2 className="text-8xl font-black serif italic tracking-tighter">The City Sleeps...</h2>
-                <div className="overflow-hidden whitespace-nowrap border-y border-red-950/30 py-4 bg-red-950/10">
-                    <div className="inline-block animate-shimmer min-w-full">
-                        <span className="text-red-600/60 text-2xl uppercase tracking-[1em] font-black mx-20">"The court has fallen. The Plagiarists rule the night."</span>
-                        <span className="text-red-600/60 text-2xl uppercase tracking-[1em] font-black mx-20">"The court has fallen. The Plagiarists rule the night."</span>
+            <div className="space-y-6 animate-pulse text-gray-500">
+                <div className="text-8xl mb-6 opacity-30 select-none">🌙</div>
+                <h2 className="text-6xl font-black serif italic tracking-tighter">The City Sleeps...</h2>
+                <div className="overflow-hidden whitespace-nowrap border-y border-red-950/30 py-3 bg-red-950/10">
+                    <div className="inline-block animate-marquee-slow min-w-[200%]">
+                        <span className="text-red-600/60 text-lg uppercase tracking-[1em] font-black mx-20">"The court has fallen. The Plagiarists rule the night."</span>
+                        <span className="text-red-600/60 text-lg uppercase tracking-[1em] font-black mx-20">"The court has fallen. The Plagiarists rule the night."</span>
                     </div>
                 </div>
             </div>
         )}
 
         {phase === 'payout' && (
-            <div className="min-h-screen bg-emerald-950 flex items-center justify-center p-20 overflow-hidden relative">
+              <div className="h-screen bg-emerald-950 flex items-center justify-center p-10 overflow-hidden relative">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse" />
-                <div className="max-w-6xl w-full glass rounded-[4rem] p-20 border border-emerald-400/20 space-y-16 animate-scale-up">
-                    <div className="text-center space-y-4">
-                        <h1 className="text-9xl font-black serif italic text-white uppercase tracking-tighter drop-shadow-2xl">The Royal Payout</h1>
-                        <p className="text-emerald-400 text-2xl uppercase tracking-[0.5em] font-black drop-shadow-glow">A Gathering to Remember</p>
+                <div className="max-w-5xl w-full glass rounded-[3rem] p-10 lg:p-14 border border-emerald-400/20 space-y-10 animate-scale-up">
+                    <div className="text-center space-y-2">
+                        <h1 className="text-6xl lg:text-8xl font-black serif italic text-white uppercase tracking-tighter drop-shadow-2xl">The Royal Payout</h1>
+                        <p className="text-emerald-400 text-xl uppercase tracking-[0.5em] font-black drop-shadow-glow">A Gathering to Remember</p>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-10">
+                      <div className="grid grid-cols-2 gap-6">
                         {players.sort((a,b) => (b.gathering_gold || 0) - (a.gathering_gold || 0)).slice(0, 8).map((p, idx) => (
-                            <div key={p.id} className="flex items-center justify-between p-8 bg-white/5 rounded-3xl border border-white/10 shadow-2xl">
-                                <div className="flex items-center gap-8">
-                                    <span className="text-emerald-400 font-black text-4xl italic">#{idx+1}</span>
-                                    <span className="text-white text-3xl font-bold">{p.name} {p.status === 'banished' ? '👻' : ''}</span>
+                            <div key={p.id} className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/10 shadow-2xl">
+                                <div className="flex items-center gap-6">
+                                    <span className="text-emerald-400 font-black text-2xl italic">#{idx+1}</span>
+                                    <span className="text-white text-xl font-bold">{p.name} {p.status === 'banished' ? '👻' : ''}</span>
                                 </div>
-                                <div className="text-gold font-mono text-5xl font-black">₹{p.gathering_gold || 0}</div>
+                                <div className="text-gold font-mono text-3xl font-black">₹{p.gathering_gold || 0}</div>
                             </div>
                         ))}
                     </div>
@@ -291,9 +289,9 @@ export default function PublicDisplay() {
         )}
 
         {phase === 'end' && (
-                <div className="space-y-12 animate-scale-up w-full max-w-6xl">
-                    <div className="text-[12rem] mb-1 drop-shadow-[0_0_80px_rgba(255,215,0,0.5)] animate-bounce-slow">🏆</div>
-                    <h2 className="text-9xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-2xl">
+                 <div className="space-y-8 animate-scale-up w-full max-w-5xl">
+                    <div className="text-8xl mb-1 drop-shadow-[0_0_80px_rgba(255,215,0,0.5)] animate-bounce-slow">🏆</div>
+                    <h2 className="text-6xl lg:text-8xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-2xl">
                     {gameState.winner_faction === 'poets' ? 'The Sukhan-war (Poets) prevail!' : 'The Naqal-baaz (Plagiarists) rule the City!'}
                     </h2>
 
@@ -380,7 +378,7 @@ export default function PublicDisplay() {
             
             <div className="relative space-y-12 animate-scale-up">
                 <div className="space-y-4">
-                    <h3 className="text-red-600 font-black uppercase tracking-[1em] text-2xl animate-shimmer">Al-Shams: Breaking News</h3>
+                    <h3 className="text-red-600 font-black uppercase tracking-[1em] text-2xl animate-marquee-slow">Al-Shams: Breaking News</h3>
                     <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-red-600 to-transparent" />
                 </div>
 
