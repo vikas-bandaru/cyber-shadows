@@ -3,6 +3,12 @@
 ## 🕯️ The Concept
 "Mehfil-e-Khaas" is a social deduction game set in a high-stakes poetic gathering in historical Hyderabad. The Sultan has offered a collective bounty (`Eidi Pot`) to his most loyal poets. However, the gathering has been infiltrated by Plagiarists (`Naqal-baaz`) whose goal is to sabotage the poetry and steal the wealth for themselves.
 
+## 🎭 Visual Identity: Royal Nocturne
+The game features a premium, cinematic aesthetic defined by:
+- **Palette**: Deep charcoal backgrounds with Gold (`#D4AF37`) accents.
+- **Typography**: Sophisticated Serif (Lora) for headings to evoke a "Historical Manuscript" feel.
+- **Atmosphere**: Glassmorphism, subtle gold glows, and smooth transitions.
+
 ## 🕹️ Gameplay Loop
 
 ### 1. Mission Phase (The Poetic Challenge)
@@ -27,6 +33,7 @@
 The engine is built on a **State-Driven Sync** model:
 - **Global Phase Manager:** A single `current_phase` flag in the database dictates the UI layout for all participants.
 - **Persistent Wealth Engine:** `Private Gold` tracks individual earnings (stolen or awarded), while the `Eidi Pot` tracks the collective pool and potential shares.
+- **Session Resilience (Refresh Guard):** Identity (`playerId`) and role reveal status are anchored in `localStorage`, allowing the engine to re-sync a player's exact state (including Silenced or Banished views) after a browser refresh.
 - **Liquidation Logic:** A dedicated function computes and distributes the remaining pot to all surviving Poets upon victory.
 
 ## 🏰 Parallels with "The Traitors"
