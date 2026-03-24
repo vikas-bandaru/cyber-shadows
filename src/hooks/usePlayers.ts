@@ -26,17 +26,23 @@ export function usePlayers(roomId: string) {
 
     // 2. Real-time Subscription
     const channel = supabase
-      .channel(`players:${roomId}`)
+      .channel(`players:all`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'players',
-          filter: `room_id=eq.${roomId}`,
+          // Broad subscription; filter in callback or just refetch
         },
-        () => {
-          fetchPlayers();
+        (payload) => {
+          console.log("Real-time Update (players):", payload);
+          // If any player in this room was affected, refetch
+          if (payload.new && (payload.new as any).room_id === roomId) {
+            fetchPlayers();
+          } else if (payload.old && (payload.old as any).room_id === roomId) {
+            fetchPlayers();
+          }
         }
       )
       .subscribe();

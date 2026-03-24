@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function HostDashboard() {
   const { roomCode } = useParams() as { roomCode: string };
   const router = useRouter();
-  const { gameState, loading: gameLoading } = useGameState(roomCode);
+  const { gameState, loading: gameLoading, setGameState } = useGameState(roomCode);
   const phase = gameState?.current_phase || 'lobby';
   const roomId = gameState?.id;
   const { players, loading: playersLoading } = usePlayers(roomId || '');
@@ -244,6 +244,10 @@ export default function HostDashboard() {
             }).eq('id', roomId);
         }
 
+        // Optimistic UI Update
+        console.log("Optimistic Transition to:", nextPhase);
+        setGameState(prev => prev ? { ...prev, current_phase: nextPhase } : null);
+
         await advancePhase(roomId, nextPhase);
     } catch (err: any) {
         console.error("Transition Error:", err);
@@ -290,8 +294,13 @@ export default function HostDashboard() {
   ];
 
   const handleAssignRoles = async () => {
-    const minRequired = gameState?.min_players_required ?? (gameState?.is_dev_mode ? 1 : 8);
-    if (players.length < minRequired) return alert(`Strict Rule: ${minRequired} players required to start.`);
+    const minRequired = gameState?.min_players_required ?? (gameState?.is_dev_mode ? 1 : 4);
+    if (players.length < minRequired) {
+      console.log("Start Blocked:", { current: players.length, required: minRequired });
+      return alert(`Minimum ${minRequired} players required to start.`);
+    }
+    
+    console.log("Starting game with", players.length, "players...");
     
     const manualCount = gameState?.is_dev_mode ? devPlagiaristCount : undefined;
     await assignRoles(roomId!, manualCount);
@@ -303,8 +312,19 @@ export default function HostDashboard() {
   };
 
   const toggleDevMode = async (enabled: boolean) => {
-    if (!roomId || process.env.NODE_ENV !== 'development') return;
-    await supabase.from('game_rooms').update({ is_dev_mode: enabled }).eq('id', roomId);
+    if (!roomId) return;
+    
+    // Optimistic Update
+    console.log("Optimistic Toggle Dev Mode:", enabled);
+    setGameState(prev => prev ? { ...prev, is_dev_mode: enabled } : null);
+    
+    const { error } = await supabase.from('game_rooms').update({ is_dev_mode: enabled }).eq('id', roomId);
+    if (error) {
+      console.error("Supabase Update Error (is_dev_mode):", error);
+      // Rollback on error
+      setGameState(prev => prev ? { ...prev, is_dev_mode: !enabled } : null);
+      alert("Error enabling dev mode: " + error.message);
+    }
   };
 
   const updateMinPlayers = async (count: number) => {
@@ -412,55 +432,37 @@ export default function HostDashboard() {
     }
   };
 
-  if (gameLoading || playersLoading) return <div className="p-10 text-white">Loading God View...</div>;
-  if (!gameState) return <div className="p-10 text-white">Room {roomCode} not found.</div>;
+  if (gameLoading || playersLoading) {
+    return (
+      <div className="min-h-screen bg-crimson-black flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto" />
+          <h2 className="serif text-2xl text-gold animate-pulse">Loading God View...</h2>
+        </div>
+      </div>
+    );
+  }
 
+  if (!gameState) {
+    return (
+      <div className="min-h-screen bg-crimson-black flex flex-col items-center justify-center p-6 text-center">
+        <div className="glass p-12 rounded-3xl border border-gold/20 max-w-md">
+          <h1 className="serif text-4xl text-gold mb-4">Room Not Found</h1>
+          <p className="text-white/60 mb-8 font-sans">The Sultan has moved to another court, or this room code has expired.</p>
+          <button 
+            onClick={() => router.push('/')}
+            className="btn-premium bg-gold text-background px-8 py-3 rounded-xl font-bold uppercase tracking-widest"
+          >
+            Return to Entrance
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentMission = activeMission;
   return (
     <main className="min-h-screen bg-crimson-black text-white p-4 lg:p-10 space-y-6 relative">
-      {/* MOBILE ONBOARDING GUARD */}
-      <AnimatePresence>
-        {showTooltips && isMobile && (
-          <motion.div 
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="fixed top-0 left-0 right-0 z-[100] p-4 lg:hidden"
-          >
-            <div className="glass p-6 rounded-3xl border border-gold/30 shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-              <div className="text-[10px] font-black text-gold uppercase mb-2 tracking-widest flex justify-between">
-                <span>{tutorialContent[tutorialStep-1].title}</span>
-                <span>{tutorialStep}/3</span>
-              </div>
-              <h4 className="serif text-white font-bold mb-1">{tutorialContent[tutorialStep-1].heading}</h4>
-              <p className="text-xs text-white/70 leading-relaxed mb-4">{tutorialContent[tutorialStep-1].text}</p>
-              <div className="flex justify-between items-center gap-4">
-                <button 
-                  onClick={() => setShowTooltips(false)}
-                  className="text-[10px] uppercase font-bold text-white/40"
-                >
-                  Skip Guide
-                </button>
-                <div className="flex gap-2">
-                  {tutorialStep > 1 && (
-                    <button 
-                      onClick={() => setTutorialStep(tutorialStep - 1)}
-                      className="btn-premium px-4 py-2 bg-white/5 border-white/10 text-[10px] rounded-xl"
-                    >
-                      Back
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => tutorialStep < 3 ? setTutorialStep(tutorialStep + 1) : setShowTooltips(false)}
-                    className="btn-premium px-6 py-2 bg-gold/20 text-gold border-gold/40 text-[10px] rounded-xl"
-                  >
-                    {tutorialStep < 3 ? "Next Step →" : "Finish"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       
       {/* HEADER: Room Code & Public View */}
       <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10 gap-4">
@@ -762,7 +764,7 @@ export default function HostDashboard() {
             <div className="flex justify-between items-center mb-6 relative">
               <Popover.Root open={showTooltips && !isMobile && tutorialStep === 2}>
                 <Popover.Trigger asChild>
-                  <h2 className="text-xl font-bold serif text-gold cursor-help">Gathered Poets ({players.length}/{gameState.min_players_required ?? 8})</h2>
+                  <h2 className="text-xl font-bold serif text-gold cursor-help">Gathered Poets ({players.length}/{gameState.min_players_required ?? 4})</h2>
                 </Popover.Trigger>
                 <Popover.Portal>
                   <Popover.Content 
@@ -781,7 +783,7 @@ export default function HostDashboard() {
                         <span>2/3</span>
                       </div>
                       <h4 className="serif text-white font-bold mb-2">Assemble the Court</h4>
-                      <p className="text-xs text-white/70 leading-relaxed mb-4">Share the link above. Once we reach <strong>{gameState.min_players_required ?? 8} poets</strong>, the Sultan can start the session.</p>
+                      <p className="text-xs text-white/70 leading-relaxed mb-4">Share the link above. Once we reach <strong>{gameState.min_players_required ?? 4} poets</strong>, the Sultan can start the session.</p>
                       <div className="flex justify-between items-center">
                         <button 
                           onClick={() => setTutorialStep(1)}
@@ -854,7 +856,7 @@ export default function HostDashboard() {
 
         {/* 3. THE CONTROL PANEL */}
         <div className="space-y-6">
-          <section className="glass p-6 rounded-3xl border border-gold/20 bg-gold/5 flex flex-col h-full">
+          <section className="glass p-6 rounded-3xl border border-gold/20 bg-gold/5 flex flex-col h-full relative z-10">
             <h2 className="text-xl font-bold serif text-gold mb-6">Execution Panel</h2>
             
             <div className="flex-1 space-y-3">
@@ -894,7 +896,7 @@ export default function HostDashboard() {
                               <span>{gameState.min_players_required}</span>
                             </div>
                             <input 
-                              type="range" min="1" max="8" 
+                              type="range" min="1" max="12" 
                               value={gameState.min_players_required}
                               onChange={(e) => updateMinPlayers(parseInt(e.target.value))}
                               className="w-full accent-gold"
@@ -917,7 +919,7 @@ export default function HostDashboard() {
                     </div>
                   )}
 
-                  <div className="relative">
+                  <div className="relative z-20">
                     <button 
                       onClick={handleAssignRoles}
                       disabled={players.length < (gameState?.min_players_required ?? (gameState?.is_dev_mode ? 1 : 4))}

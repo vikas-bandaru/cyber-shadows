@@ -221,12 +221,19 @@ export const assignRoles = async (roomId: string, manualTraitorCount?: number) =
     role: index < traitorCount ? 'naqal_baaz' : 'sukhan_war'
   }));
 
+  console.log("Assigning roles to players...");
   for (const update of updates) {
-    await supabase
+    console.log(`Setting role for ${update.id} to ${update.role}`);
+    const { error } = await supabase
       .from('players')
       .update({ role: update.role })
       .eq('id', update.id);
+    if (error) {
+      console.error(`Failed to assign role to ${update.id}:`, error);
+      throw error;
+    }
   }
+  console.log("Role assignment complete.");
 };
 
 export const liquidatePot = async (roomId: string) => {
