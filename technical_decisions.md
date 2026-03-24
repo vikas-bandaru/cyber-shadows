@@ -74,6 +74,13 @@ CREATE TABLE IF NOT EXISTS night_votes (
     target_id UUID REFERENCES players(id) ON DELETE CASCADE,
     UNIQUE(room_id, voter_id)
 );
+-- 5. Enum Synchronization (Phases)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'game_phase' AND e.enumlabel = 'payout') THEN
+        ALTER TYPE game_phase ADD VALUE 'payout';
+    END IF;
+END $$;
 ```
 ## 10. Core JavaScript Utilities (`src/lib/game-logic.ts`)
 We encapsulated the game's state transitions and calculations into reusable utility functions:
