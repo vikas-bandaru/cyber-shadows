@@ -446,6 +446,8 @@ export default function HostDashboard() {
     if (!roomId) return;
     await supabase.from('players').update({ status: 'silenced' }).eq('id', targetId);
     await supabase.from('night_votes').delete().eq('room_id', roomId);
+    // Persist target for plagiarist lockout
+    await supabase.from('game_rooms').update({ reveal_target_id: targetId }).eq('id', roomId);
     setSilenceConfirmed(true);
   };
 

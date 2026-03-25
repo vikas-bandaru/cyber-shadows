@@ -110,7 +110,9 @@ export const advancePhase = async (roomId: string, nextPhase: GamePhase) => {
   const updateData: any = { 
     current_phase: nextPhase,
     mission_timer_end: null, // Clear timer on every transition by default
-    sabotage_triggered: false // Reset trigger on every phase change
+    sabotage_triggered: false, // Reset trigger on every phase change
+    is_revealing: false,
+    reveal_target_id: null
   };
 
   if (nextPhase === 'mission') {
