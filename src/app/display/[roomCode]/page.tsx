@@ -15,6 +15,7 @@ export default function PublicDisplay() {
   const { players, loading: playersLoading } = usePlayers(roomId || '');
   const [origin, setOrigin] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
+  const [showWinnerHighlight, setShowWinnerHighlight] = useState(false);
   const hasPlayedRef = useRef(false);
 
   useEffect(() => {
@@ -40,6 +41,16 @@ export default function PublicDisplay() {
     
     return () => clearInterval(interval);
   }, [gameState?.mission_timer_end, gameState?.current_phase]);
+
+  useEffect(() => {
+    if (gameState?.reveal_target_id) {
+       setShowWinnerHighlight(false);
+       const timer = setTimeout(() => setShowWinnerHighlight(true), 5000);
+       return () => clearTimeout(timer);
+    } else {
+       setShowWinnerHighlight(false);
+    }
+  }, [gameState?.reveal_target_id]);
 
   const playBuzzer = async () => {
     if (hasPlayedRef.current) return;
@@ -89,18 +100,18 @@ export default function PublicDisplay() {
       
       <div className="h-1 bg-gradient-to-r from-gold via-emerald-deep to-gold w-full" />
 
-      <header className="p-4 lg:p-10 flex justify-between items-start shrink-0">
-        <div className="space-y-2">
-            <h1 className="text-5xl lg:text-7xl font-black serif text-gold tracking-tighter uppercase leading-none italic drop-shadow-2xl">Mehfil-e-Khaas</h1>
+      <header className="p-4 lg:p-6 flex justify-between items-start shrink-0">
+        <div className="space-y-1">
+            <h1 className="text-3xl lg:text-5xl font-black serif text-gold tracking-tighter uppercase leading-none italic drop-shadow-2xl">Mehfil-e-Khaas</h1>
             <div className="flex items-center gap-4 opacity-50">
-                <span className="h-[1px] w-12 bg-white" />
-                <span className="uppercase tracking-[0.5em] text-[10px] font-bold">Social Deduction Engine</span>
+                <span className="h-[1px] w-8 bg-white" />
+                <span className="uppercase tracking-[0.5em] text-[8px] font-bold">Social Deduction Engine</span>
             </div>
         </div>
         
-        <div className="text-right glass p-3 lg:p-6 rounded-2xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5 min-w-[140px] lg:min-w-[200px]">
+        <div className="text-right glass p-2 lg:p-3 rounded-xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5 min-w-[80px] lg:min-w-[120px]">
             <div className="text-[10px] lg:text-xs uppercase font-black text-gold/60 tracking-widest mb-1">Room Code</div>
-            <div className="text-4xl lg:text-6xl font-black tracking-tighter text-white leading-none drop-shadow-glow">{roomCode}</div>
+            <div className="text-xl lg:text-3xl font-black tracking-tighter text-white leading-none drop-shadow-glow">{roomCode}</div>
         </div>
       </header>
 
@@ -109,7 +120,7 @@ export default function PublicDisplay() {
         {phase === 'lobby' && (
             <div className="space-y-8 animate-fade-enter-active">
                 <div className="text-6xl animate-bounce-slow drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]">🖋️</div>
-                <h2 className="text-4xl lg:text-6xl font-bold serif text-gold italic">Gathering the Poets...</h2>
+                <h2 className="text-3xl lg:text-4xl font-bold serif text-gold italic">Gathering the Poets...</h2>
                 <div className="flex gap-4 justify-center">
                     {Array.from({ length: 8 }).map((_, i) => (
                         <div key={i} className={`w-6 h-6 rounded-full border-2 transition-all duration-700 ${players[i] ? 'bg-gold border-gold scale-125 shadow-[0_0_15px_rgba(255,215,0,0.5)]' : 'bg-white/5 border-white/20'}`} />
@@ -157,7 +168,7 @@ export default function PublicDisplay() {
                     <>
                         <div className="flex flex-col items-center gap-2 lg:gap-6 mb-4 lg:mb-10">
                              <h2 className="text-sm lg:text-2xl uppercase tracking-[0.5em] text-gold font-black opacity-40">Mission Count Down</h2>
-                            <div className={`text-6xl lg:text-[8rem] font-black leading-none italic serif transition-all duration-500 shadow-gold/20 drop-shadow-2xl ${timeLeft <= 10 ? 'text-red-500 animate-pulse scale-105' : 'text-white'}`}>
+                            <div className={`text-5xl lg:text-6xl font-black leading-none italic serif transition-all duration-500 shadow-gold/20 drop-shadow-2xl ${timeLeft <= 10 ? 'text-red-500 animate-pulse scale-105' : 'text-white'}`}>
                                 {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                             </div>
                         </div>
@@ -192,7 +203,7 @@ export default function PublicDisplay() {
                     <div className="space-y-12 animate-scale-up py-20">
                          <div className="text-[12rem] animate-pulse drop-shadow-[0_0_80px_rgba(255,215,0,0.3)]">👑</div>
                          <div className="space-y-6">
-                            <h2 className="text-6xl lg:text-8xl font-black italic serif text-gold uppercase tracking-tighter">The Sultan is Deliberating</h2>
+                            <h2 className="text-4xl lg:text-5xl font-black italic serif text-gold uppercase tracking-tighter">The Sultan is Deliberating</h2>
                             <p className="text-white/40 text-2xl uppercase tracking-[0.5em] font-black">Hold your breath. The final decree is being established.</p>
                          </div>
                     </div>
@@ -216,9 +227,9 @@ export default function PublicDisplay() {
                     </div>
                 ) : gameState.tie_protocol === 'spin' ? (
                     <div className="space-y-12 animate-fade-enter-active py-10 flex flex-col items-center">
-                         <h2 className="text-6xl lg:text-8xl font-black italic serif text-red-500 uppercase tracking-tighter drop-shadow-glow">The Pen of Fate</h2>
+                         <h2 className="text-4xl lg:text-5xl font-black italic serif text-red-500 uppercase tracking-tighter drop-shadow-glow">The Pen of Fate</h2>
                          
-                         <div className="relative w-[700px] h-[700px] flex items-center justify-center">
+                         <div className="relative w-[60vh] h-[60vh] flex items-center justify-center">
                             {/* Player Cards in Circle */}
                             {gameState.tied_player_ids?.map((id, i) => {
                                 const p = players.find(p => p.id === id);
@@ -229,16 +240,16 @@ export default function PublicDisplay() {
                                 return (
                                     <div 
                                         key={id} 
-                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 glass p-10 rounded-[2.5rem] border-4 transition-all duration-1000 min-w-[220px] text-center ${
-                                            isWinner ? 'border-gold scale-125 shadow-[0_0_100px_rgba(255,215,0,0.4)] z-50 bg-gold/10' : 'border-white/10 opacity-30 scale-90 grayscale'
+                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 glass p-4 lg:p-6 rounded-3xl border-4 transition-all duration-1000 min-w-[120px] lg:min-w-[180px] text-center ${
+                                             (showWinnerHighlight && isWinner) ? 'border-gold scale-125 shadow-[0_0_50px_rgba(255,215,0,0.4)] z-50 bg-gold/10' : 'border-white/10 opacity-30 scale-90 grayscale'
                                         }`}
                                         style={{ 
                                             left: `${50 + 44 * Math.cos((angle * Math.PI) / 180)}%`,
                                             top: `${50 + 44 * Math.sin((angle * Math.PI) / 180)}%`
                                         }}
                                     >
-                                        <div className={`text-4xl font-black serif italic tracking-tight ${isWinner ? 'text-gold' : 'text-white'}`}>{p?.name}</div>
-                                        {isWinner && <div className="text-[12px] text-gold font-black uppercase tracking-[0.3em] mt-3 animate-bounce-slow">The Seal is Set</div>}
+                                        <div className={`text-lg lg:text-2xl font-black serif italic tracking-tight ${isWinner ? 'text-gold' : 'text-white'}`}>{p?.name}</div>
+                                        {showWinnerHighlight && isWinner && <div className="text-[10px] text-gold font-black uppercase tracking-[0.3em] mt-3 animate-bounce-slow">The Seal is Set</div>}
                                     </div>
                                 );
                             })}
@@ -283,7 +294,7 @@ export default function PublicDisplay() {
                                  );
                              })()}
                          </div>
-                         <p className="text-white/40 text-2xl uppercase tracking-[0.5em] font-black animate-pulse bg-white/5 px-10 py-3 rounded-full border border-white/5">
+                         <p className="text-white/40 text-lg uppercase tracking-[0.5em] font-black animate-pulse bg-white/5 px-6 py-2 rounded-full border border-white/5">
                             {gameState.reveal_target_id ? "The Ink of Fate has dried." : "Fate is deciding the Plagiarist..."}
                          </p>
                     </div>
@@ -294,7 +305,7 @@ export default function PublicDisplay() {
         {phase === 'night' && (
             <div className="space-y-6 animate-pulse text-gray-500">
                 <div className="text-8xl mb-6 opacity-30 select-none">🌙</div>
-                <h2 className="text-6xl font-black serif italic tracking-tighter">The City Sleeps...</h2>
+                <h2 className="text-4xl font-black serif italic tracking-tighter">The City Sleeps...</h2>
                 <div className="overflow-hidden whitespace-nowrap border-y border-red-950/30 py-3 bg-red-950/10">
                     <div className="inline-block animate-marquee-slow min-w-[200%]">
                         <span className="text-red-600/60 text-lg uppercase tracking-[1em] font-black mx-20">"The court has fallen. The Plagiarists rule the night."</span>
@@ -307,8 +318,8 @@ export default function PublicDisplay() {
 
         {phase === 'end' && (
                  <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl animate-scale-up overflow-hidden py-4">
-                    <div className="text-4xl lg:text-6xl mb-2 drop-shadow-[0_0_80px_rgba(255,215,0,0.5)] animate-bounce-slow">🏆</div>
-                    <h2 className="text-3xl lg:text-6xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-2xl text-center leading-tight">
+                    <div className="text-2xl lg:text-4xl mb-2 drop-shadow-[0_0_80px_rgba(255,215,0,0.5)] animate-bounce-slow">🏆</div>
+                    <h2 className="text-2xl lg:text-4xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-2xl text-center leading-tight">
                         {gameState.winner_faction === 'poets' ? 'The Sukhan-war (Poets) prevail!' : 'The Naqal-baaz (Plagiarists) rule the City!'}
                     </h2>
 
@@ -369,7 +380,7 @@ export default function PublicDisplay() {
         <div className="fixed inset-0 z-[150] bg-crimson-black flex flex-col items-center justify-center p-4 lg:p-12 overflow-hidden">
             <div className="max-w-6xl w-full space-y-4 lg:space-y-6 animate-fade-enter-active flex flex-col max-h-full">
                 <div className="text-center space-y-4">
-                    <h2 className="text-3xl lg:text-6xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-[0_0_30px_rgba(255,215,0,0.4)]">
+                    <h2 className="text-2xl lg:text-4xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-[0_0_30px_rgba(255,215,0,0.4)]">
                         The Final Gathering
                     </h2>
                     <div className="h-1 lg:h-2 w-32 lg:w-48 bg-gold/40 mx-auto rounded-full" />
@@ -416,7 +427,7 @@ export default function PublicDisplay() {
         <div className="flex items-center gap-12">
             <div className="text-right">
                 <div className="text-[8px] lg:text-[10px] uppercase font-black text-gold/40 tracking-widest mb-1 lg:mb-2 font-mono">Real-time Pot Balance</div>
-                <div className="text-4xl lg:text-7xl font-black text-gold drop-shadow-[0_0_20px_rgba(255,215,0,0.3)]">₹{phase === 'lobby' ? 0 : (gameState.eidi_pot > 0 ? gameState.eidi_pot : (gameState.last_game_pot || 0))}</div>
+                <div className="text-3xl lg:text-5xl font-black text-gold drop-shadow-[0_0_20px_rgba(255,215,0,0.3)]">₹{phase === 'lobby' ? 0 : (gameState.eidi_pot > 0 ? gameState.eidi_pot : (gameState.last_game_pot || 0))}</div>
             </div>
         </div>
       </footer>
@@ -431,7 +442,7 @@ export default function PublicDisplay() {
                 </div>
 
                 <div className="space-y-3 lg:space-y-6">
-                   <h2 className="text-4xl md:text-6xl lg:text-9xl font-black serif italic text-white uppercase tracking-tighter drop-shadow-[0_0_50px_rgba(220,38,38,0.5)]">
+                   <h2 className="text-2xl lg:text-6xl font-black serif italic text-white uppercase tracking-tighter drop-shadow-[0_0_50px_rgba(220,38,38,0.5)]">
                      A Voice is Stolen
                    </h2>
                    <p className="text-red-500/60 text-lg lg:text-3xl uppercase tracking-[0.3em] lg:tracking-[0.5em] font-black italic">Consensus in the Darkness</p>
@@ -439,10 +450,10 @@ export default function PublicDisplay() {
 
                 {gameState.reveal_target_id && (
                   <div className="glass p-8 lg:p-16 rounded-[2rem] lg:rounded-[4rem] border-2 lg:border-4 border-red-500/30 bg-red-950/20 shadow-[0_0_100px_rgba(220,38,38,0.3)] animate-bounce-subtle">
-                      <div className="text-5xl lg:text-8xl font-black serif italic text-red-100 mb-2 lg:mb-4 uppercase">
+                      <div className="text-3xl lg:text-5xl font-black serif italic text-red-100 mb-2 lg:mb-4 uppercase">
                         {players.find(p => p.id === gameState.reveal_target_id)?.name}
                       </div>
-                      <p className="text-red-500 font-black text-xl lg:text-2xl uppercase tracking-widest">Has Been Silenced</p>
+                      <p className="text-red-500 font-black text-lg lg:text-xl uppercase tracking-widest">Has Been Silenced</p>
                   </div>
                 )}
 
