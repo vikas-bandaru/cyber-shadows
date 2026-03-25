@@ -175,18 +175,17 @@ export default function HostDashboard() {
     return null;
   }, [players, playersLoading, phase]);
   
-  const missionSignalCount = useMemo(() => votes.filter(v => v.round_id === 0).length, [votes]);
+  const currentSignals = useMemo(() => players.filter(p => p.has_signaled === true).length, [players]);
   const canVerifySabotage = useMemo(() => {
-    if (!gameState || isVerifying || gameState.sabotage_used || isSabotageVerified || missionSignalCount === 0) return false;
+    if (!gameState || isVerifying || gameState.sabotage_used || isSabotageVerified || currentSignals === 0) return false;
     
-    const isUnanimous = missionSignalCount === alivePlagiarists.length;
+    const requiredSignals = alivePlagiarists.length;
+    const isUnanimous = currentSignals === requiredSignals && requiredSignals > 0;
     const isTimeout = timeLeft === 0 && phase === 'mission';
     
-    if (alivePlagiarists.length <= 1) {
-      return isUnanimous;
-    }
     return isUnanimous || isTimeout;
-  }, [missionSignalCount, alivePlagiarists.length, timeLeft, phase, gameState?.sabotage_used, isVerifying, isSabotageVerified]);
+  }, [currentSignals, alivePlagiarists.length, timeLeft, phase, gameState?.sabotage_used, isVerifying, isSabotageVerified]);
+
   const hasPlayedRef = useRef(false);
 
   useEffect(() => {
@@ -1200,7 +1199,7 @@ export default function HostDashboard() {
                       disabled={!canVerifySabotage || isVerifying || isSabotageVerified}
                       className="btn-premium w-full bg-red-600/20 text-red-500 border-red-600/40 py-4 rounded-2xl disabled:opacity-20"
                     >
-                      {gameState?.sabotage_used ? "Sabotage Verified" : `Verify Sabotage (${missionSignalCount}/${alivePlagiarists.length})`}
+                      {gameState?.sabotage_used ? "Sabotage Verified" : `Verify Sabotage (${currentSignals}/${alivePlagiarists.length})`}
                     </button>
 
                     <button 

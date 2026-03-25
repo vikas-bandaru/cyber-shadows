@@ -203,16 +203,27 @@ export default function PlayerClient() {
     if (alreadySignaled) return;
 
     setIsSignaling(true);
-    const { error } = await supabase.from('votes').insert([{
+    const { error: voteError } = await supabase.from('votes').insert([{
         room_id: roomId,
         voter_id: playerId,
         target_id: playerId, 
         round_id: 0
     }]);
 
-    if (error) {
-        console.error("Sabotage Signal Failed:", error.message, error.code, error.details);
+    if (voteError) {
+        console.error("Sabotage Signal Failed:", voteError.message, voteError.code, voteError.details);
         setIsSignaling(false);
+        return;
+    }
+
+    // Also update individual player state for unanimous tracking
+    const { error: playerError } = await supabase
+        .from('players')
+        .update({ has_signaled: true })
+        .eq('id', playerId);
+
+    if (playerError) {
+        console.error("Player Signal Sync Failed:", playerError.message);
     }
   };
 
