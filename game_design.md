@@ -16,7 +16,7 @@ The game features a premium, cinematic aesthetic defined by:
 - **Two-Stage Timing:**
     - **60 seconds Preparation:** All players (except Plagiarists) are blindfolded. Plagiarists use this time to view their secret assignment.
     - **90 seconds Solving:** All players open their eyes. The group works together to solve the challenge.
-- **Sabotage:** Plagiarists can secretly trigger a "Sabotage" signal. If verified by the Host, they steal gold from the collective pot into their `private_gold` (Black Money).
+- **Sabotage:** Plagiarists can secretly trigger a "Sabotage" signal. If verified by the Host, they steal gold from the collective pot into their `private_gold` (Black Money). The signaling process provides immediate feedback to the player, disabling the button and showing a "Signaling..." state to prevent double-clicks.
 
 ### 2. Majlis Phase (The Banishment)
 - **Objective:** Debate and identify the infiltrators.
