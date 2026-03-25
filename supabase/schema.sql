@@ -25,6 +25,7 @@ CREATE TABLE players (
     role player_role NOT NULL,
     status player_status DEFAULT 'alive' NOT NULL,
     private_gold INTEGER DEFAULT 0 NOT NULL,
+    has_signaled BOOLEAN DEFAULT FALSE,
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

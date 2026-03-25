@@ -33,6 +33,7 @@ export interface Player {
   status: PlayerStatus;
   private_gold: number;
   gathering_gold?: number;
+  has_signaled?: boolean;
   joined_at: string;
 }
 
@@ -151,7 +152,10 @@ export const startMission = async (roomId: string) => {
   // 2. Clear previous sabotage signals (round_id 0) to allow a fresh start
   await supabase.from('votes').delete().eq('room_id', roomId).eq('round_id', 0);
 
-  // 3. Update room state
+  // 3. Reset has_signaled for all players in the room
+  await supabase.from('players').update({ has_signaled: false }).eq('room_id', roomId);
+
+  // 4. Update room state
   await supabase.from('game_rooms').update({ 
     mission_timer_end: timerEnd.toISOString(),
     sabotage_triggered: false,
@@ -235,7 +239,8 @@ export const resetGame = async (roomId: string) => {
     .update({ 
       status: 'alive', 
       private_gold: 0,
-      gathering_gold: 0 
+      gathering_gold: 0,
+      has_signaled: false 
       // Note: We DO NOT reset role here, to avoid triggering evaluateWinCondition('poets') 
       // if any hook runs before the phase transition is fully processed.
       // Roles are re-assigned in handleAssignRoles anyway.
@@ -292,7 +297,10 @@ export const assignRoles = async (roomId: string, manualTraitorCount?: number) =
     console.log(`Setting role for ${update.id} to ${update.role}`);
     const { error } = await supabase
       .from('players')
-      .update({ role: update.role })
+      .update({ 
+        role: update.role,
+        has_signaled: false 
+      })
       .eq('id', update.id);
     if (error) {
       console.error(`Failed to assign role to ${update.id}:`, error);
