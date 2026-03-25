@@ -98,9 +98,9 @@ export default function PublicDisplay() {
             </div>
         </div>
         
-        <div className="text-right glass p-4 lg:p-6 rounded-2xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5 max-w-[150px]">
-            <div className="text-[8px] uppercase font-black text-gold/60 tracking-widest mb-1">Room Code</div>
-            <div className="text-[clamp(2.5rem,5vw,4.5rem)] font-black tracking-tighter text-white leading-none">{roomCode}</div>
+        <div className="text-right glass p-3 lg:p-6 rounded-2xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5 min-w-[140px] lg:min-w-[200px]">
+            <div className="text-[10px] lg:text-xs uppercase font-black text-gold/60 tracking-widest mb-1">Room Code</div>
+            <div className="text-4xl lg:text-6xl font-black tracking-tighter text-white leading-none drop-shadow-glow">{roomCode}</div>
         </div>
       </header>
 
@@ -155,9 +155,9 @@ export default function PublicDisplay() {
                     </div>
                 ) : (
                     <>
-                        <div className="flex flex-col items-center gap-6 mb-10">
-                             <h2 className="text-2xl uppercase tracking-[0.5em] text-gold font-black opacity-40">Mission Count Down</h2>
-                            <div className={`text-[8rem] font-black leading-none italic serif transition-all duration-500 shadow-gold/20 drop-shadow-2xl ${timeLeft <= 10 ? 'text-red-500 animate-pulse scale-105' : 'text-white'}`}>
+                        <div className="flex flex-col items-center gap-2 lg:gap-6 mb-4 lg:mb-10">
+                             <h2 className="text-sm lg:text-2xl uppercase tracking-[0.5em] text-gold font-black opacity-40">Mission Count Down</h2>
+                            <div className={`text-6xl lg:text-[8rem] font-black leading-none italic serif transition-all duration-500 shadow-gold/20 drop-shadow-2xl ${timeLeft <= 10 ? 'text-red-500 animate-pulse scale-105' : 'text-white'}`}>
                                 {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                             </div>
                         </div>
@@ -367,38 +367,38 @@ export default function PublicDisplay() {
         </div>
         <div className="flex items-center gap-12">
             <div className="text-right">
-                <div className="text-[10px] uppercase font-black text-gold/40 tracking-widest mb-2 font-mono">Real-time Pot Balance</div>
-                <div className="text-7xl font-black text-gold drop-shadow-[0_0_20px_rgba(255,215,0,0.3)]">₹{phase === 'lobby' ? 0 : (gameState.eidi_pot > 0 ? gameState.eidi_pot : (gameState.last_game_pot || 0))}</div>
+                <div className="text-[8px] lg:text-[10px] uppercase font-black text-gold/40 tracking-widest mb-1 lg:mb-2 font-mono">Real-time Pot Balance</div>
+                <div className="text-4xl lg:text-7xl font-black text-gold drop-shadow-[0_0_20px_rgba(255,215,0,0.3)]">₹{phase === 'lobby' ? 0 : (gameState.eidi_pot > 0 ? gameState.eidi_pot : (gameState.last_game_pot || 0))}</div>
             </div>
         </div>
       </footer>
       {gameState.is_revealing && (
-        <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-20 text-center animate-fade-enter-active">
+        <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-6 lg:p-20 text-center animate-fade-enter-active">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.2)_0%,transparent_70%)] animate-pulse" />
             
-            <div className="relative space-y-12 animate-scale-up">
-                <div className="space-y-4">
-                    <h3 className="text-red-600 font-black uppercase tracking-[1em] text-2xl animate-marquee-slow">Al-Shams: Breaking News</h3>
+            <div className="relative space-y-6 lg:space-y-12 animate-scale-up max-w-full">
+                <div className="space-y-2 lg:space-y-4">
+                    <h3 className="text-red-600 font-black uppercase tracking-[0.5em] lg:tracking-[1em] text-sm lg:text-2xl animate-marquee-slow">Al-Shams: Breaking News</h3>
                     <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-red-600 to-transparent" />
                 </div>
 
-                <div className="space-y-6">
-                   <h2 className="text-9xl font-black serif italic text-white uppercase tracking-tighter drop-shadow-[0_0_50px_rgba(220,38,38,0.5)]">
+                <div className="space-y-3 lg:space-y-6">
+                   <h2 className="text-4xl md:text-6xl lg:text-9xl font-black serif italic text-white uppercase tracking-tighter drop-shadow-[0_0_50px_rgba(220,38,38,0.5)]">
                      A Voice is Stolen
                    </h2>
-                   <p className="text-red-500/60 text-3xl uppercase tracking-[0.5em] font-black italic">Consensus in the Darkness</p>
+                   <p className="text-red-500/60 text-lg lg:text-3xl uppercase tracking-[0.3em] lg:tracking-[0.5em] font-black italic">Consensus in the Darkness</p>
                 </div>
 
                 {gameState.reveal_target_id && (
-                  <div className="glass p-16 rounded-[4rem] border-4 border-red-500/30 bg-red-950/20 shadow-[0_0_100px_rgba(220,38,38,0.3)] animate-bounce-subtle">
-                      <div className="text-8xl font-black serif italic text-red-100 mb-4 uppercase">
+                  <div className="glass p-8 lg:p-16 rounded-[2rem] lg:rounded-[4rem] border-2 lg:border-4 border-red-500/30 bg-red-950/20 shadow-[0_0_100px_rgba(220,38,38,0.3)] animate-bounce-subtle">
+                      <div className="text-5xl lg:text-8xl font-black serif italic text-red-100 mb-2 lg:mb-4 uppercase">
                         {players.find(p => p.id === gameState.reveal_target_id)?.name}
                       </div>
-                      <p className="text-red-500 font-black text-2xl uppercase tracking-widest">Has Been Silenced</p>
+                      <p className="text-red-500 font-black text-xl lg:text-2xl uppercase tracking-widest">Has Been Silenced</p>
                   </div>
                 )}
 
-                <div className="pt-20 text-white/20 text-xl italic font-serif">
+                <div className="pt-10 lg:pt-20 text-white/20 text-sm lg:text-xl italic font-serif">
                    "The Mehfil continues, but one ink-well has run dry..."
                 </div>
             </div>

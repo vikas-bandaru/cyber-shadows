@@ -31,6 +31,7 @@ export default function HostDashboard() {
   const [devPlagiaristCount, setDevPlagiaristCount] = useState(1);
   const [showDevSettings, setShowDevSettings] = useState(false);
   const [isToolkitOpen, setIsToolkitOpen] = useState(false);
+  const [isSabotageVerified, setIsSabotageVerified] = useState(false);
   const [showScript, setShowScript] = useState(false);
   const [showTooltips, setShowTooltips] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(1);
@@ -176,8 +177,16 @@ export default function HostDashboard() {
   
   const missionSignalCount = useMemo(() => votes.filter(v => v.round_id === 0).length, [votes]);
   const canVerifySabotage = useMemo(() => {
-    return (missionSignalCount === alivePlagiarists.length || (timeLeft === 0 && phase === 'mission')) && missionSignalCount > 0 && !gameState?.sabotage_used && !isVerifying;
-  }, [missionSignalCount, alivePlagiarists.length, timeLeft, gameState?.sabotage_used, phase, isVerifying]);
+    if (!gameState || isVerifying || gameState.sabotage_used || isSabotageVerified || missionSignalCount === 0) return false;
+    
+    const isUnanimous = missionSignalCount === alivePlagiarists.length;
+    const isTimeout = timeLeft === 0 && phase === 'mission';
+    
+    if (alivePlagiarists.length <= 1) {
+      return isUnanimous;
+    }
+    return isUnanimous || isTimeout;
+  }, [missionSignalCount, alivePlagiarists.length, timeLeft, phase, gameState?.sabotage_used, isVerifying, isSabotageVerified]);
   const hasPlayedRef = useRef(false);
 
   useEffect(() => {
@@ -251,6 +260,7 @@ export default function HostDashboard() {
             setIsVotesLocked(false);
             setBanishedPlayerId(null);
             setMissionOutcome(null);
+            setIsSabotageVerified(false);
             setSilenceConfirmed(false);
             setIsBanishmentConfirmed(false);
             
@@ -458,18 +468,42 @@ export default function HostDashboard() {
     
     setIsVerifying(true);
 
-    // Fresh fetch to prevent race conditions
-    const { data: latestRoom } = await supabase.from('game_rooms').select('sabotage_used').eq('id', roomId).single();
-    if (latestRoom?.sabotage_used) {
+    if (!roomId) {
+        console.error("Sabotage Verification Failed: Room ID is missing.");
+        alert("Error: Room ID missing. Refresh and try again.");
         setIsVerifying(false);
         return;
     }
 
-    // 1. Lock immediately at DB level
-    await supabase.from('game_rooms').update({ 
+    // Fresh fetch to prevent race conditions
+    // Use select('*') to bypass potential schema cache issues with specific columns
+    const { data: latestRoom, error: fetchError } = await supabase.from('game_rooms').select('*').eq('id', roomId).single();
+    if (fetchError) {
+        console.error("Sabotage Fetch Failed:", fetchError);
+        alert(`Verification Error: ${fetchError.message}`);
+        setIsVerifying(false);
+        return;
+    }
+
+    if (latestRoom?.sabotage_used) {
+        setIsVerifying(false);
+        setIsSabotageVerified(true);
+        return;
+    }
+
+    // 1. Update Game Room State (Consolidated)
+    const { error: roomError } = await supabase.from('game_rooms').update({ 
         sabotage_used: true,
-        sabotage_triggered: false 
+        sabotage_triggered: false,
+        eidi_pot: (latestRoom?.eidi_pot || 0) + 1000
     }).eq('id', roomId);
+    
+    if (roomError) {
+        console.error("Sabotage Room Update Failed Detail:", JSON.stringify(roomError, null, 2));
+        alert(`Failed to update pot: ${roomError.message}`);
+        setIsVerifying(false);
+        return;
+    }
     
     // 2. Award gold to plagiarists
     const plagiarists = players.filter(p => p.role === 'naqal_baaz' && p.status === 'alive');
@@ -477,15 +511,12 @@ export default function HostDashboard() {
       await supabase.from('players').update({ private_gold: (p.private_gold || 0) + 500 }).eq('id', p.id);
     }
     
-    // 3. Update pot
-    await supabase.from('game_rooms').update({ 
-        eidi_pot: (gameState.eidi_pot || 0) + 1000
-    }).eq('id', roomId);
-
-    // 4. Clear mission signals (round_id 0)
+    // 3. Clear mission signals (round_id 0)
     await supabase.from('votes').delete().eq('room_id', roomId).eq('round_id', 0);
     
-    setIsVerifying(false); // Reset guard after all operations complete
+    // 4. Hard lock locally (Independent of mission outcome)
+    setIsSabotageVerified(true);
+    setIsVerifying(false); 
   };
 
   const handleMissionSuccess = async () => {
@@ -514,6 +545,7 @@ export default function HostDashboard() {
       setIsVotesLocked(false);
       setBanishedPlayerId(null);
       setMissionOutcome(null);
+      setIsSabotageVerified(false);
       setActiveMission(null); // Clear previous mission details
       setSilenceConfirmed(false);
       setIsBanishmentConfirmed(false);
@@ -1092,7 +1124,7 @@ export default function HostDashboard() {
                     
                     <button 
                       onClick={handleVerifySabotage}
-                      disabled={!canVerifySabotage}
+                      disabled={!canVerifySabotage || isVerifying || isSabotageVerified}
                       className="btn-premium w-full bg-red-600/20 text-red-500 border-red-600/40 py-4 rounded-2xl disabled:opacity-20"
                     >
                       {gameState?.sabotage_used ? "Sabotage Verified" : `Verify Sabotage (${missionSignalCount}/${alivePlagiarists.length})`}
