@@ -42,11 +42,11 @@ The application is designed to be played across multiple devices simultaneously:
 - **Verification Engine**: Players can verify the final pot distribution at the end of each game.
 - **Session Recovery**: Refresh Guard ensures no one loses their role or status.
 
-## 🕯️ Key Features
-- **The Gathering**: Multi-game session tracking with persistent `Gathering Gold`.
-- **Eidi Pot**: Dynamic collective pot that can be sabotaged by Plagiarists.
-- **Verification Engine**: Players can verify the final pot distribution at the end of each game.
-- **Session Recovery**: Refresh Guard ensures no one loses their role or status.
+## ✨ Thematic Experience
+- **Royal Nocturne Aesthetic**: A premium dark-mode interface with gold accents and elegant typography.
+- **Cinematic Displays**: Viewport-locked public display with responsive font-scaling (`clamp()`) for perfect presentation on any screen.
+- **Atmospheric Animations**: Slow, meditative marquees and smooth glassmorphic transitions.
+- **Immediate Feedback**: Reactive button states with "Signaling..." indicators to ensure a smooth, low-latency feel for players.
 
 ## 🛠️ Tech Stack
 - **Framework**: Next.js 16+ (App Router, Turbopack)

@@ -416,14 +416,14 @@ export default function PlayerClient() {
                     
                     <button 
                         onClick={handleSabotageTrigger}
-                        disabled={!!mySabotageSignal || gameState.sabotage_used || isBlindfoldPhase || !gameState.mission_timer_end}
-                        className={`btn-premium w-full py-6 rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(220,38,38,0.3)] transition-all font-mono min-h-[44px] ${
-                            mySabotageSignal 
-                            ? 'bg-red-950/40 text-red-500/50 border-red-900/20' 
-                            : 'bg-red-600 text-white border-red-400 active:scale-95'
+                        disabled={!!mySabotageSignal || gameState.sabotage_used || isBlindfoldPhase || !gameState.mission_timer_end || isSignaling}
+                        className={`w-full py-8 px-4 rounded-[2.5rem] border-4 transition-all duration-500 font-black text-2xl uppercase tracking-[0.2em] shadow-2xl relative overflow-hidden group active:scale-95 ${
+                            (mySabotageSignal || isSignaling) 
+                            ? 'bg-red-950/40 border-red-500/50 text-red-500/50 cursor-not-allowed' 
+                            : 'bg-red-600 border-white/20 text-white hover:bg-red-500 active:bg-red-700 shadow-red-600/20'
                         }`}
                     >
-                        {mySabotageSignal ? `⚡ Signal Sent (${signalCount}/${alivePlagiarists})` : (isBlindfoldPhase ? "Eyes Closed..." : (gameState.sabotage_used ? "Sabotage Verified" : (!gameState.mission_timer_end ? "Mission Concluded" : "Signal Sabotage")))}
+                        {isSignaling ? "Signaling..." : (mySabotageSignal ? `⚡ Signal Sent (${signalCount}/${alivePlagiarists})` : (isBlindfoldPhase ? "Eyes Closed..." : (gameState.sabotage_used ? "Sabotage Verified" : (!gameState.mission_timer_end ? "Mission Concluded" : "Signal Sabotage"))))}
                     </button>
                     {gameState.sabotage_used && (
                         <div className="mt-4 p-4 bg-red-950/20 border border-red-500/30 rounded-2xl flex justify-between items-center animate-fade-enter-active">

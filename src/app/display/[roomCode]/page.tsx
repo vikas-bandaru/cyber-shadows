@@ -100,7 +100,7 @@ export default function PublicDisplay() {
         
         <div className="text-right glass p-4 lg:p-6 rounded-2xl border border-gold/20 flex flex-col items-center shadow-2xl bg-gold/5 max-w-[150px]">
             <div className="text-[8px] uppercase font-black text-gold/60 tracking-widest mb-1">Room Code</div>
-            <div className="text-5xl font-black tracking-tighter text-white">{roomCode}</div>
+            <div className="text-[clamp(2.5rem,5vw,4.5rem)] font-black tracking-tighter text-white leading-none">{roomCode}</div>
         </div>
       </header>
 

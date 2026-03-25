@@ -32,6 +32,8 @@ The application is split into three primary entry points:
 - **Rationale:** Upon victory, the `liquidatePot` utility fetch winners and distributes the `eidi_pot`. Crucially, this is immediately added to the player's `gathering_gold` (Total Session Wealth), and the `eidi_pot` is reset to 0 to prevent double-liquidation. The final pot value is stored in `last_game_pot` for collective verification.
 - **Decision:** "Payout Phase" for Gathering Conclusion.
 - **Rationale:** To facilitate a proper ending to a multi-game session, a dedicated `payout` phase was added. This phase locks the room and displays a cumulative leaderboard from `gathering_gold`, ensuring players see their total earnings across all rounds played during the gathering.
+- **Decision:** Robust Reset Logic.
+- **Rationale:** The `resetGame` utility was enhanced with error-handling and a fallback mechanism to clear critical mission state even if schema updates are partially successful. This ensures the room always returns to a playable lobby state.
 
 ## 6. Thematic Components
 - **Spirit World:** A desaturated, zinc-themed UI state for banished players to prevent them from interacting while allowing them to spectate.
@@ -43,10 +45,15 @@ The application is split into three primary entry points:
 - **Visual Feedback:** Buttons use `active:scale-95` to provide tactile confirmation of actions, reducing accidental double-clicks.
 - **Layout Stability:** The `PlayerClient` uses `h-screen overflow-hidden` and `touch-none` overlays for restricted states (Silenced, Banished) to prevent "pull-to-refresh" or accidental scrolling from breaking the immersion.
 
-## 8. Visual Systems & Thematic UI
-- **Decision**: Implemented the **"Royal Nocturne"** design system across all routes.
-- **Rationale**: Uses a deep charcoal (`#050505`) and gold (`#D4AF37`) palette with Lora (Serif) typography to evoke a high-stakes, historical manuscript aesthetic.
-- **Interaction**: Integrated `IntersectionObserver` on the landing page to automatically expand the rules section once the CTA enters the viewport, ensuring a premium onboarding flow.
+## 9. Responsive Display Layout
+- **Decision:** Viewport-Locked (`h-screen`) Cinematic Display.
+- **Rationale:** To ensure a "single-glance" experience for public viewing, the `DisplayPage` was optimized to fit all phases (Lobby, Mission, Night, Payout) within a single viewport without scrolling.
+- **Implementation:** Used `overflow-hidden` on the main container and responsive font-scaling (`clamp()`) for the room code and primary titles to maintain legibility on both large screens and mobile browsers.
+
+## 10. Cinematic Animations
+- **Decision:** Customized Marquee Speed.
+- **Rationale:** The "Night Phase" and "Breaking News" marquees were adjusted to a slow, 30-second duration (`animate-marquee-slow`) to maintain a premium, meditative feel consistent with the Royal Nocturne aesthetic.
+- **Interaction Feedback:** The "Signal Sabotage" button on the player client was updated to provide immediate `isSignaling` feedback, disabling the button and changing the label to "Signaling..." to prevent double-clicks and reduce latency anxiety.
 
 ### Database Schema Repair (Run in Supabase SQL Editor)
 Execute the following block to ensure all required columns exist for the gathering system and sabotage mechanics:
