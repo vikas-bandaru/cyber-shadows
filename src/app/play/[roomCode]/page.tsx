@@ -532,51 +532,61 @@ export default function PlayerClient() {
         <GoldBadge />
 
         {isTraitor && isAlive ? (
-            <div className="w-full space-y-8 animate-fade-enter-active">
-                <div className="space-y-2">
-                    <h1 className="text-red-600 font-black uppercase tracking-[0.5em] text-[10px]">Al-Shams: Coordination</h1>
-                    <h2 className="text-4xl font-bold serif italic text-red-500">Seal a Poet's Fate</h2>
-                    <p className="text-white/20 text-[10px] uppercase tracking-widest italic">Signal your intent. Consensus is key.</p>
+            (gameState.is_revealing || gameState.reveal_target_id) ? (
+                <div className="w-full space-y-8 animate-fade-enter-active">
+                    <div className="text-8xl mb-8 animate-pulse text-red-600">🖋️</div>
+                    <div className="space-y-4">
+                        <h2 className="text-4xl font-bold serif italic text-red-100 uppercase tracking-tighter">The Seal is Set</h2>
+                        <p className="text-white/40 text-xs uppercase tracking-[0.3em] font-black">Your coordination is complete. The night moves on.</p>
+                    </div>
                 </div>
+            ) : (
+                <div className="w-full space-y-8 animate-fade-enter-active">
+                    <div className="space-y-2">
+                        <h1 className="text-red-600 font-black uppercase tracking-[0.5em] text-[10px]">Al-Shams: Coordination</h1>
+                        <h2 className="text-4xl font-bold serif italic text-red-500">Seal a Poet's Fate</h2>
+                        <p className="text-white/20 text-[10px] uppercase tracking-widest italic">Signal your intent. Consensus is key.</p>
+                    </div>
 
-                <div className="grid grid-cols-1 gap-4 w-full max-w-sm mx-auto">
-                    {potentialVictims.map(p => {
-                        const voteCount = tally[p.id] || 0;
-                        const isMyVote = votedId === p.id;
+                    <div className="grid grid-cols-1 gap-4 w-full max-w-sm mx-auto">
+                        {potentialVictims.map(p => {
+                            const voteCount = tally[p.id] || 0;
+                            const isMyVote = votedId === p.id;
 
-                        return (
-                            <button
-                                key={p.id}
-                                onClick={() => handleNightVote(p.id)}
-                                className={`relative p-6 rounded-3xl border-2 active:scale-95 transition-all flex justify-between items-center group min-h-[44px] ${
-                                    isMyVote 
-                                    ? 'bg-red-600/20 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.2)]' 
-                                    : 'bg-white/5 border-white/10 hover:border-red-500/30'
-                                }`}
-                            >
-                                <div className="flex flex-col items-start translate-x-2">
-                                    <span className="text-2xl font-black serif italic text-red-100">{p.name}</span>
-                                    {isMyVote && <span className="text-[10px] uppercase font-bold text-red-500 tracking-tighter">My Selection</span>}
-                                </div>
-                                
-                                {voteCount > 0 && (
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex -space-x-2">
-                                            {[...Array(voteCount)].map((_, i) => (
-                                                <div key={i} className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(220,38,38,1)] animate-pulse" />
-                                            ))}
-                                        </div>
+                            return (
+                                <button
+                                    key={p.id}
+                                    onClick={() => handleNightVote(p.id)}
+                                    className={`relative p-6 rounded-3xl border-2 active:scale-95 transition-all flex justify-between items-center group min-h-[44px] ${
+                                        isMyVote 
+                                        ? 'bg-red-600/20 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.2)]' 
+                                        : 'bg-white/5 border-white/10 hover:border-red-500/30'
+                                    }`}
+                                >
+                                    <div className="flex flex-col items-start translate-x-2">
+                                        <span className="text-2xl font-black serif italic text-red-100">{p.name}</span>
+                                        {isMyVote && <span className="text-[10px] uppercase font-bold text-red-500 tracking-tighter">My Selection</span>}
                                     </div>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
+                                    
+                                    {voteCount > 0 && (
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex -space-x-2">
+                                                {[...Array(voteCount)].map((_, i) => (
+                                                    <div key={i} className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(220,38,38,1)] animate-pulse" />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                <div className="glass p-6 rounded-3xl border border-red-500/10 text-white/40 italic text-xs max-w-xs mx-auto leading-relaxed">
-                    The Sultan will confirm the final silence based on your collective intention.
+                    <div className="glass p-6 rounded-3xl border border-red-500/10 text-white/40 italic text-xs max-w-xs mx-auto leading-relaxed">
+                        The Sultan will confirm the final silence based on your collective intention.
+                    </div>
                 </div>
-            </div>
+            )
         ) : (
             <div className="space-y-8 opacity-20 grayscale transition-all duration-1000 scale-90">
                 <div className="text-9xl mb-4 animate-pulse">🌙</div>
