@@ -191,3 +191,15 @@ Prevent the "Signal Jammed" overlay from leaking to players during the night pha
 - [x] Gated the `silenced` status check in `PlayerClient.tsx` using the `is_revealing` flag and current phase detection.
 - [x] Verified that status remains hidden during "Blackout Sync" until the reveal handshake is complete.
 
+## 2026-03-26: Build & Deployment Fix (Phase 6)
+
+**Status:** Completed
+
+### Goal
+Resolve Vercel deployment failures and finalize project metadata for the "Cyber-Shadows" launch.
+
+### Progress (What Worked)
+- [x] Installed missing `lucide-react` dependency in `package.json`.
+- [x] Updated project name to `cyber-shadows` in `package.json`.
+- [x] Verified that all imported icons (`Cpu`, `Zap`, `Shield`, etc.) are now resolvable by the build engine.
+
