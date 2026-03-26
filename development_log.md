@@ -247,3 +247,25 @@ Prevent premature phase transitions during the Breach Council by strictly shield
 - **Transition Shielding**: Wrapped the `INITIATE_BLACKOUT_SYNC` button in a conditional guard (`isTerminationConfirmed || potentialWinner`).
 - **Logic Validation**: Ensured the Overlord must finalize player termination before they can proceed to the next phase, eliminating accidental "stuck" states.
 - **Thematic Consistency**: Added `animate-fade-enter-active` to the button's appearance for a smooth, high-tech reveal once requirements are met.
+
+## 2026-03-26: UX Optimization (Silent Copy) (Phase 11)
+
+**Status:** Completed
+
+### Goal
+Remove the blocking alert when copying the join link and provide better UI feedback.
+
+### Progress (What Worked)
+- **Silent Clipboard Action**: Replaced the `alert()` call with a direct `navigator.clipboard.writeText` implementation.
+- **Micro-Interaction Feedback**: Added `isLinkCopied` state to the Host Dashboard. The button now gracefully changes from "COPY" to "COPIED!" with a neon-cyan glow for 2 seconds upon a successful action, ensuring a smooth, non-intrusive experience.
+
+## 2026-03-26: Session Navigation (Secure Exit) (Phase 12)
+
+**Status:** Completed
+
+### Goal
+Provide a safe way for the Host to exit the session and return to the home page with a confirmation guard.
+
+### Progress (What Worked)
+- **Header Navigation**: Added an `EXIT_NODE` home button to the Host Dashboard header using the `Home` icon from `lucide-react`.
+- **Context-Aware Guard**: Implemented a `handleExit` function that checks the current game phase. It allows immediate exit from the lobby but requires manual confirmation if a session is active, preventing accidental session abandonment.

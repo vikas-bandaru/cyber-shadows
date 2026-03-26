@@ -9,7 +9,7 @@ import { advancePhase, assignRoles, evaluateWinCondition, resetGame, deleteRoom,
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import * as Popover from '@radix-ui/react-popover';
-import { Terminal, Cpu, Shield, Users, Zap, Search, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Terminal, Cpu, Shield, Users, Zap, Search, AlertTriangle, CheckCircle2, Home, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HostDashboard() {
@@ -41,6 +41,17 @@ export default function HostDashboard() {
   const [hostName, setHostName] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isTerminationConfirmed, setIsTerminationConfirmed] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
+
+  const handleExit = () => {
+    if (phase !== 'lobby') {
+      if (confirm("SESSION_ACTIVE: Exiting will not terminate the node, but you will lose temporary dashboard access. Proceed?")) {
+        window.location.href = '/';
+      }
+    } else {
+      window.location.href = '/';
+    }
+  };
 
   useEffect(() => {
     setHostName(localStorage.getItem('cyber_shadows_runner'));
@@ -705,16 +716,28 @@ export default function HostDashboard() {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(`${origin}/?code=${roomCode}`);
-                  alert('Link copied to clipboard!');
+                  setIsLinkCopied(true);
+                  setTimeout(() => setIsLinkCopied(false), 2000);
                 }}
-                className="btn-premium bg-white/10 px-3 py-1.5 rounded-lg border-white/20 hover:bg-white/20"
+                className={`btn-premium px-3 py-1.5 rounded-lg border border-white/20 transition-all font-mono text-[10px] font-black uppercase tracking-widest ${
+                  isLinkCopied ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.2)]' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                }`}
               >
-                Copy
+                {isLinkCopied ? 'COPIED!' : 'COPY'}
               </button>
             </div>
           </div>
         </div>
         <div className="flex gap-4 items-center">
+            <button 
+                onClick={handleExit}
+                className="btn-premium bg-white/5 text-white/40 border-white/10 px-4 py-4 rounded-full hover:bg-white/10 hover:text-white transition-all flex items-center gap-2 group"
+                title="Return to Home"
+            >
+                <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-widest pr-2 hidden lg:inline">EXIT_NODE</span>
+            </button>
+            <div className="h-8 w-[1px] bg-white/10 mx-2" />
           {isHostAPlayer && (
             <button 
               onClick={() => window.open(`/play/${roomCode}`, '_blank')}
