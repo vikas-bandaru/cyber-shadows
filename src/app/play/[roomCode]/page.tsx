@@ -8,6 +8,7 @@ import { usePlayers } from '@/hooks/usePlayers';
 import { supabase } from '@/lib/supabase';
 import { useState, useEffect } from 'react';
 import { Mission } from '@/lib/game-logic';
+import { Shield, Zap, Terminal, Cpu } from 'lucide-react';
 
 export default function PlayerClient() {
   const { roomCode } = useParams() as { roomCode: string };
@@ -20,11 +21,11 @@ export default function PlayerClient() {
   useEffect(() => {
     if (typeof window !== 'undefined' && roomId && gameState) {
         if (gameState.current_round === 1 && (gameState.current_phase === 'lobby' || gameState.current_phase === 'reveal')) {
-            localStorage.removeItem(`mehfil_role_revealed_${roomId}`);
+            localStorage.removeItem(`cyber_shadows_role_revealed_${roomId}`);
             setShowRole(false);
         }
 
-        const revealed = localStorage.getItem(`mehfil_role_revealed_${roomId}`);
+        const revealed = localStorage.getItem(`cyber_shadows_role_revealed_${roomId}`);
         if (revealed === 'true') {
             setShowRole(true);
         }
@@ -34,7 +35,7 @@ export default function PlayerClient() {
   const handleReveal = () => {
     setShowRole(true);
     if (typeof window !== 'undefined' && roomId) {
-        localStorage.setItem(`mehfil_role_revealed_${roomId}`, 'true');
+        localStorage.setItem(`cyber_shadows_role_revealed_${roomId}`, 'true');
     }
   };
   const [votedId, setVotedId] = useState<string | null>(null);
@@ -122,6 +123,7 @@ export default function PlayerClient() {
 
   const me = players.find(p => p.id === playerId);
   const isTraitor = me?.role === 'naqal_baaz';
+  const roleName = isTraitor ? 'System-Spy' : 'Glitch-Runner';
 
   useEffect(() => {
     if ((gameState?.current_phase === 'night' || gameState?.current_phase === 'mission' || gameState?.current_phase === 'majlis') && roomId) {
@@ -161,20 +163,20 @@ export default function PlayerClient() {
 
   if (gameLoading || playersLoading || !playerId) {
     return (
-      <div className="h-screen w-full bg-crimson-black flex flex-col items-center justify-center text-white overflow-hidden">
-        <div className="w-16 h-16 border-4 border-gold/20 border-t-gold rounded-full animate-spin mb-4"></div>
-        <p className="text-gold/60 text-xs uppercase font-black tracking-widest animate-pulse font-serif italic">Entering the Mehfil...</p>
+      <div className="h-screen w-full bg-obsidian flex flex-col items-center justify-center text-white overflow-hidden">
+        <div className="w-16 h-16 border-4 border-neon-cyan/20 border-t-neon-cyan rounded-full animate-spin mb-4"></div>
+        <p className="text-neon-cyan/60 text-[10px] uppercase font-black tracking-widest animate-pulse font-mono">Accessing the Mainframe...</p>
       </div>
     );
   }
 
   if (!me) return (
-    <div className="h-screen w-full bg-crimson-black text-white p-10 flex flex-col items-center justify-center text-center overflow-hidden">
-        <h1 className="text-4xl font-black serif text-gold mb-4 italic uppercase tracking-tighter shadow-gold/10">Poet not found.</h1>
-        <p className="text-white/40 mb-8 italic serif">Your seat in this Mehfil seems to have vanished.</p>
+    <div className="h-screen w-full bg-obsidian text-white p-10 flex flex-col items-center justify-center text-center overflow-hidden">
+        <h1 className="text-4xl font-black font-mono text-neon-cyan mb-4 uppercase tracking-tighter shadow-neon-cyan/10">Runner not found.</h1>
+        <p className="text-white/40 mb-8 font-mono">Your connection to this node seems to have vanished.</p>
         <button 
             onClick={() => window.location.href = '/'}
-            className="btn-premium bg-gold text-black py-4 px-8 rounded-2xl active:scale-95 transition-all text-xs font-black uppercase tracking-widest"
+            className="btn-premium bg-neon-cyan text-black py-4 px-8 rounded-lg active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,243,255,0.4)]"
         >
             Return to Entrance
         </button>
@@ -203,6 +205,21 @@ export default function PlayerClient() {
     if (alreadySignaled) return;
 
     setIsSignaling(true);
+    
+    // Server-side check before insert for extra safety
+    const { data: existingSignal } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('voter_id', playerId)
+        .eq('round_id', 0)
+        .maybeSingle();
+
+    if (existingSignal) {
+        setIsSignaling(false);
+        return;
+    }
+
     const { error: voteError } = await supabase.from('votes').insert([{
         room_id: roomId,
         voter_id: playerId,
@@ -246,46 +263,49 @@ export default function PlayerClient() {
     if (!showRole) return null;
     return (
       <div className={`fixed top-4 left-4 z-50 px-3 py-1.5 rounded-full border backdrop-blur-md shadow-lg animate-fade-enter-active flex items-center gap-2 ${
-          isTraitor ? 'bg-red-950/40 border-red-500/30' : 'bg-emerald-950/40 border-emerald-500/30'
+          isTraitor ? 'bg-purple-950/40 border-neon-purple/30' : 'bg-cyan-950/40 border-neon-cyan/30'
       }`}>
-          <div className={`w-2 h-2 rounded-full animate-pulse ${isTraitor ? 'bg-red-500' : 'bg-emerald-500'}`} />
-          <span className="text-[10px] uppercase font-black tracking-[0.2em] text-white/80">
-              {me.role.replace('_', ' ')}
+          <div className={`w-2 h-2 rounded-full animate-pulse ${isTraitor ? 'bg-neon-purple' : 'bg-neon-cyan'}`} />
+          <span className="text-[9px] uppercase font-black tracking-[0.2em] text-white/80 font-mono">
+              {isTraitor ? 'System-Spy' : 'Glitch-Runner'}
           </span>
       </div>
     );
   };
 
   const GoldBadge = () => (
-    <div className="fixed top-4 right-4 z-50 px-4 py-2 rounded-2xl bg-black/40 border border-gold/20 backdrop-blur-md shadow-xl animate-fade-enter-active flex flex-col items-end">
+    <div className="fixed top-4 right-4 z-50 px-4 py-2 rounded-xl bg-black/60 border border-neon-cyan/20 backdrop-blur-md shadow-xl animate-fade-enter-active flex flex-col items-end font-mono">
         <div className="flex items-center gap-2">
-            <span className="text-gold font-mono font-black">₹{me.private_gold}</span>
-            <span className="text-[8px] uppercase font-black text-white/40 tracking-widest">My Gold</span>
+            <span className="text-neon-cyan font-black font-mono">#{me.private_gold}</span>
+            <span className="text-[8px] uppercase font-black text-white/40 tracking-widest">Personal Credits</span>
         </div>
         {!isTraitor && isAlive && gameState?.current_phase !== 'end' && (
-            <div className="text-[8px] text-emerald-400 font-bold uppercase tracking-tighter mt-0.5">
-                Potential Share: ₹{potentialShare}
+            <div className="text-[8px] text-neon-purple font-bold uppercase tracking-tighter mt-0.5">
+                Potential Share: #{potentialShare}
             </div>
         )}
     </div>
   );
 
-  if (me.status === 'silenced') {
+  const isNight = gameState?.current_phase === 'night';
+  const isRevealing = gameState?.is_revealing;
+
+  if (me.status === 'silenced' && (!isNight || isRevealing)) {
     return (
-      <div className="fixed inset-0 z-[100] bg-red-950 flex flex-col items-center justify-center p-8 text-center animate-fade-enter-active overflow-hidden touch-none h-screen w-full">
-          <div className="w-32 h-32 rounded-full bg-red-900/50 border-4 border-red-500 flex items-center justify-center text-6xl shadow-[0_0_50px_rgba(220,38,38,0.5)] animate-pulse mb-10">
-              🤐
+      <div className="fixed inset-0 z-[100] bg-black bg-[radial-gradient(circle_at_center,_rgba(188,19,254,0.15)_0%,_transparent_70%)] flex flex-col items-center justify-center p-8 text-center animate-fade-enter-active overflow-hidden touch-none h-screen w-full scanline">
+          <div className="w-32 h-32 rounded-lg bg-neon-purple/10 border-2 border-neon-purple flex items-center justify-center text-6xl shadow-[0_0_50px_rgba(188,19,254,0.3)] animate-pulse mb-10">
+              <Shield className="w-16 h-16 text-neon-purple" />
           </div>
-          <h1 className="text-5xl font-black serif italic text-white uppercase tracking-tighter mb-4 shadow-red-500/20">Zabaan-bandi</h1>
-          <p className="text-red-100 text-xl font-serif italic mb-10 leading-relaxed">
-              "The Plagiarists have found you.<br/>Your voice has been stolen by the shadows."
+          <h1 className="text-5xl font-black font-mono text-white uppercase tracking-tighter mb-4 shadow-neon-purple/20">Signal Jammed</h1>
+          <p className="text-neon-purple/80 text-lg font-mono mb-10 leading-relaxed uppercase tracking-tight">
+              "The System-Spies have breached your link.<br/>Your decryption module is offline."
           </p>
-          <div className="glass p-8 rounded-3xl border border-red-500/20 max-w-xs mx-auto">
-              <p className="text-[10px] uppercase font-black text-red-500 tracking-[0.2em] mb-2">Current Restrictions</p>
-              <ul className="text-xs text-red-200/60 space-y-2 text-left italic font-serif">
-                  <li>• You cannot speak during the Majlis.</li>
-                  <li>• You cannot vote to banish others.</li>
-                  <li>• You must remain silent until the end.</li>
+          <div className="glass p-8 rounded-xl border border-neon-purple/20 max-w-xs mx-auto">
+              <p className="text-[10px] uppercase font-black text-neon-purple tracking-[0.2em] mb-4">RESTRICTED MODE ACTIVE</p>
+              <ul className="text-[10px] text-white/50 space-y-3 text-left font-mono uppercase tracking-widest">
+                  <li>• Voice signals disabled</li>
+                  <li>• Deactivation auth restricted</li>
+                  <li>• Observe only: READ_ONLY_SYNC</li>
               </ul>
           </div>
       </div>
@@ -294,16 +314,16 @@ export default function PlayerClient() {
 
   if (me.status === 'banished') {
     return (
-      <div className="fixed inset-0 z-[100] bg-zinc-950 flex flex-col items-center justify-center p-8 text-center animate-fade-enter-active overflow-hidden touch-none h-screen w-full">
-          <div className="w-32 h-32 rounded-full bg-zinc-900 border-4 border-zinc-700 flex items-center justify-center text-6xl shadow-[0_0_50px_rgba(255,255,255,0.05)] mb-10 opacity-40">
-              👻
+      <div className="fixed inset-0 z-[100] bg-obsidian flex flex-col items-center justify-center p-8 text-center animate-fade-enter-active overflow-hidden touch-none h-screen w-full scanline">
+          <div className="w-32 h-32 rounded-xl bg-zinc-900/50 border-2 border-zinc-700 flex items-center justify-center text-6xl shadow-[0_0_50px_rgba(255,255,255,0.02)] mb-10 opacity-40">
+              <Zap className="w-16 h-16 text-zinc-500" />
           </div>
-          <h1 className="text-5xl font-black serif italic text-zinc-500 uppercase tracking-tighter mb-4">Spirit World</h1>
-          <p className="text-zinc-400 text-xl font-serif italic mb-10 leading-relaxed max-w-sm">
-              "You have been banished from the Mehfil.<br/>You may watch, but you must remain silent."
+          <h1 className="text-5xl font-black font-mono text-zinc-600 uppercase tracking-tighter mb-4">DEACTIVATED</h1>
+          <p className="text-zinc-500 text-sm font-mono mb-10 leading-relaxed max-w-sm uppercase tracking-widest">
+              "You have been disconnected from the Shadow-Network.<br/>Ghosting mode enabled."
           </p>
-          <div className="p-6 rounded-3xl border border-white/5 bg-white/5 max-w-xs mx-auto">
-               <p className="text-[10px] uppercase font-black text-zinc-600 tracking-[0.2em]">The Veil has Fallen</p>
+          <div className="p-6 rounded-lg border border-white/5 bg-white/5 max-w-xs mx-auto">
+               <p className="text-[10px] uppercase font-black text-zinc-700 tracking-[0.3em]">ID_DEACTIVATED // NODE_OFFLINE</p>
           </div>
       </div>
     );
@@ -311,11 +331,15 @@ export default function PlayerClient() {
 
   if (gameState?.current_phase === 'lobby') {
     return (
-      <main className="h-screen w-full overflow-hidden flex flex-col items-center justify-center text-center bg-emerald-deep text-white p-6 animate-fade-enter-active touch-none">
-        <div className="glass p-10 rounded-full w-48 h-48 flex items-center justify-center text-6xl mb-8 animate-pulse">🖋️</div>
-        <GoldBadge />
-        <h1 className="text-4xl font-bold text-gold mb-2 serif">Welcome, {me.name}</h1>
-        <p className="text-emerald-100/60 italic max-w-xs transition-all">Waiting for the Sultan to gather all the poets... ({players.length}/4)</p>
+      <main className="h-screen w-full overflow-hidden flex flex-col items-center justify-center text-center bg-background text-white p-6 animate-fade-enter-active touch-none scanline">
+        <div className="glass p-12 rounded-xl w-48 h-48 flex items-center justify-center text-6xl mb-8 animate-pulse border-neon-cyan/20">
+            <Terminal className="w-20 h-20 text-neon-cyan drop-shadow-[0_0_15px_rgba(0,243,255,0.5)]" />
+        </div>
+        < GoldBadge />
+        <h1 className="text-4xl font-black text-neon-cyan mb-2 font-mono uppercase tracking-tighter">NODE_ACCESS: {me.name}</h1>
+        <p className="text-white/40 italic max-w-xs text-[10px] uppercase font-black tracking-widest animate-shimmer">
+            Waiting for Overlord AI sync... ({players.length}/{gameState.min_players_required || 8})
+        </p>
       </main>
     );
   }
@@ -324,32 +348,34 @@ export default function PlayerClient() {
     return (
       <main 
         onClick={handleReveal}
-        className={`min-h-screen flex flex-col items-center justify-center p-6 text-center transition-colors duration-1000 ${
-            showRole ? (isTraitor ? 'bg-crimson-black' : 'bg-emerald-deep') : 'bg-black'
+        className={`min-h-screen flex flex-col items-center justify-center p-6 text-center transition-colors duration-1000 scanline ${
+            showRole ? (isTraitor ? 'bg-obsidian' : 'bg-background') : 'bg-black'
         }`}
       >
         <RoleBadge />
         <GoldBadge />
         {!showRole ? (
           <div className="animate-scale-up space-y-8">
-            <h1 className="text-4xl font-black text-gold serif italic uppercase tracking-tighter">Your Fate Awaits</h1>
-            <p className="text-white/40 italic font-serif">A role has been assigned to you by the Sultan.</p>
+            <h1 className="text-4xl font-black text-neon-cyan font-mono uppercase tracking-tighter">Neural Identity</h1>
+            <p className="text-white/40 text-[10px] uppercase font-black tracking-widest">Handshake protocol from Overlord AI complete.</p>
             <button 
               onClick={handleReveal}
-              className="w-44 h-44 rounded-full border-4 border-gold shadow-[0_0_60px_rgba(212,175,55,0.4)] flex flex-col items-center justify-center group active:scale-90 transition-all bg-background/80 backdrop-blur-md mx-auto animate-bounce-subtle"
+              className="w-44 h-44 rounded-xl border-2 border-neon-cyan shadow-[0_0_40px_rgba(0,243,255,0.3)] flex flex-col items-center justify-center group active:scale-90 transition-all bg-background/80 backdrop-blur-md mx-auto animate-pulse-gold"
             >
-              <span className="text-7xl group-hover:scale-125 transition-transform duration-500 text-gold font-serif">?</span>
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gold/80 mt-2">Tap to Reveal</span>
+              <span className="text-7xl group-hover:scale-110 transition-transform duration-500 text-neon-cyan font-mono font-black italic">?</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-neon-cyan/80 mt-4">Execute Sync</span>
             </button>
           </div>
         ) : (
           <div className="animate-scale-up">
-            <h2 className="text-gold text-lg uppercase tracking-widest mb-2 font-black">You are a</h2>
-            <h1 className="text-7xl font-bold text-white mb-6 serif uppercase tracking-tighter">{me.role.replace('_', ' ')}</h1>
-            <p className="text-white/60 mb-8 max-w-xs mx-auto text-sm italic serif">
+            <h2 className="text-neon-cyan text-sm uppercase tracking-[0.3em] mb-4 font-black">Authentication: Success</h2>
+            <h1 className={`text-6xl font-black mb-6 font-mono uppercase tracking-tighter ${isTraitor ? 'text-neon-purple shadow-[0_0_20px_rgba(188,19,254,0.4)]' : 'text-neon-cyan shadow-[0_0_20px_rgba(0,243,255,0.4)]'}`}>
+                {isTraitor ? 'System-Spy' : 'Glitch-Runner'}
+            </h1>
+            <p className="text-white/60 mb-8 max-w-xs mx-auto text-[10px] font-mono leading-relaxed uppercase tracking-widest">
                 {isTraitor 
-                    ? "The Shadows call. Sabotage the mission without being caught. Tip: You can safely check your secret assignment during the 60s Blindfold phase."
-                    : "The Verse is sacred. Collaborate on missions and identify the imposters among you."}
+                    ? "Infiltrate the network. Sabotage the data breach without triggering security alerts. Consensus required for deactivation kills."
+                    : "Secure the Verse. Collaborate on data missions and filter out anomalous signals in the Council."}
             </p>
           </div>
         )}
@@ -360,12 +386,16 @@ export default function PlayerClient() {
   if (gameState?.current_phase === 'mission') {
     if (!gameState.mission_timer_end) {
       return (
-        <main className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center justify-center text-center animate-fade-enter-active">
+        <main className="min-h-screen bg-obsidian text-white p-6 flex flex-col items-center justify-center text-center animate-fade-enter-active">
           <RoleBadge />
-          <GoldBadge />
-          <div className="glass p-12 rounded-full w-48 h-48 flex items-center justify-center text-6xl mb-12 animate-bounce-slow border-4 border-gold/20 shadow-[0_0_50px_rgba(255,215,0,0.1)]">⚜️</div>
-          <h1 className="text-4xl font-bold text-gold mb-4 serif">The Sultan is Preparing...</h1>
-          <p className="text-white/40 italic max-w-xs font-serif leading-relaxed">Wait for the Sultan to announce the poetic challenge and start the mission timer.</p>
+          < GoldBadge />
+          <div className="glass p-12 rounded-xl w-48 h-48 flex items-center justify-center text-6xl mb-12 animate-bounce-slow border-2 border-neon-cyan/20 shadow-[0_0_50px_rgba(0,243,255,0.1)]">
+              <Cpu className="w-20 h-20 text-neon-cyan" />
+          </div>
+          <h1 className="text-4xl font-black text-neon-cyan mb-4 font-mono uppercase tracking-tighter">Initializing Breach...</h1>
+          <p className="text-white/40 text-[10px] uppercase tracking-widest font-mono leading-relaxed max-w-xs transition-all">
+              Wait for Overlord AI to sync data packets and start the timer.
+          </p>
         </main>
       );
     }
@@ -375,9 +405,9 @@ export default function PlayerClient() {
         <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center text-center animate-fade-enter-active">
           <RoleBadge />
           <GoldBadge />
-          <div className="text-8xl mb-12 animate-pulse opacity-20">🌙</div>
-          <h1 className="text-4xl font-black text-gray-700 serif uppercase tracking-tighter mb-4">Close Your Eyes</h1>
-          <p className="text-gray-800 italic uppercase tracking-[0.3em] font-black text-xs">The Sultan is revealing the logic to the Plagiarists...</p>
+          <div className="text-8xl mb-12 animate-pulse opacity-20"><Zap className="w-20 h-20 text-white" /></div>
+          <h1 className="text-4xl font-black text-gray-700 serif uppercase tracking-tighter mb-4">Disconnecting...</h1>
+          <p className="text-gray-800 italic uppercase tracking-[0.3em] font-black text-xs">The Overlord is revealing the encryption to the Spies...</p>
           <div className="mt-20 text-gold/20 font-black text-6xl italic serif animate-pulse">
             {timeLeft - 90}s
           </div>
@@ -389,71 +419,71 @@ export default function PlayerClient() {
     const alivePlagiarists = players.filter(p => p.role === 'naqal_baaz' && p.status === 'alive').length;
 
     return (
-      <main className="min-h-screen bg-slate-900 text-white p-6 flex flex-col justify-between overflow-hidden">
+        <main className="min-h-screen bg-black text-white p-6 flex flex-col justify-between overflow-hidden scanline">
         <RoleBadge />
         <GoldBadge />
         <div className="space-y-6">
-            <header className="flex justify-between items-center text-white/40 uppercase tracking-widest text-[10px] font-bold">
+            <header className="flex justify-between items-center text-white/40 uppercase tracking-[0.3em] text-[10px] font-black font-mono">
                 <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span>{isBlindfoldPhase ? 'PREPARATION PHASE' : 'MISSION ACTIVE'}</span>
+                    <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse" />
+                    <span>{isBlindfoldPhase ? 'DARK_SYNC_ACTIVE' : 'BREACH_IN_PROGRESS'}</span>
                 </div>
-                <div className="text-gold font-mono text-xl">
+                <div className="text-neon-cyan font-mono text-xl drop-shadow-[0_0_10px_rgba(0,243,255,0.5)]">
                     {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                 </div>
             </header>
             
             {activeMission ? (
-              <section className="glass p-8 rounded-3xl border border-white/10 shadow-2xl bg-white/5 animate-fade-enter-active">
-                  <h3 className="text-gold uppercase text-[10px] tracking-widest mb-2 font-black">Current Objective</h3>
+              <section className="glass p-8 rounded-xl border border-neon-cyan/10 shadow-2xl bg-black/40 animate-fade-enter-active">
+                  <h3 className="text-neon-cyan uppercase text-[10px] tracking-widest mb-4 font-black font-mono">Neural Objective</h3>
                   {isBlindfoldPhase && !isTraitor ? (
-                      <div className="py-10 text-center space-y-4">
-                          <div className="text-4xl animate-pulse grayscale opacity-20">📜</div>
-                          <p className="text-gold/40 text-xs uppercase font-black tracking-widest italic animate-shimmer">Deciphering the Script...</p>
+                      <div className="py-10 text-center space-y-6">
+                          <div className="text-4xl animate-pulse grayscale opacity-20"><Zap className="w-12 h-12 text-neon-cyan mx-auto" /></div>
+                          <p className="text-neon-cyan/40 text-[10px] uppercase font-black tracking-widest animate-shimmer font-mono">Bypassing Mainframe Security...</p>
                       </div>
                   ) : (
                       <>
-                        <h2 className="text-3xl font-bold mb-4 serif leading-tight italic">{activeMission.title}</h2>
-                        <p className="text-gray-400 text-sm font-serif">"{activeMission.public_goal}"</p>
+                        <h2 className="text-2xl font-black mb-4 font-mono leading-tight uppercase tracking-tighter text-white">{activeMission.title}</h2>
+                        <p className="text-white/40 text-xs font-mono uppercase tracking-widest leading-relaxed">"{activeMission.public_goal}"</p>
                       </>
                   )}
               </section>
             ) : (
-              <div className="p-10 text-center text-gray-500 italic">Waiting for the Sultan to announce the logic...</div>
+              <div className="p-10 text-center text-white/20 font-mono text-[10px] uppercase tracking-[0.4em]">Waiting for Overlord AI broadcast...</div>
             )}
 
             {isTraitor && isAlive && activeMission && (
-                <section className="bg-red-950/40 border-2 border-500/30 p-8 rounded-3xl animate-fade-enter-active">
-                    <h3 className="text-red-500 uppercase text-[10px] tracking-widest mb-4 font-black">Secret Sabotage</h3>
-                    <p className="text-red-100 text-xl font-serif italic mb-10">"{activeMission.secret_sabotage}"</p>
+                <section className="bg-neon-purple/5 border-2 border-neon-purple/20 p-8 rounded-xl animate-fade-enter-active mt-4 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                        <Shield className="w-4 h-4 text-neon-purple" />
+                    </div>
+                    <h3 className="text-neon-purple uppercase text-[10px] tracking-[0.3em] mb-4 font-black font-mono">SABOTAGE_INIT</h3>
+                    <p className="text-white/80 text-lg font-mono mb-10 uppercase tracking-tight">"{activeMission.secret_sabotage}"</p>
                     
                     <button 
                         onClick={handleSabotageTrigger}
                         disabled={!!mySabotageSignal || gameState.sabotage_used || isBlindfoldPhase || !gameState.mission_timer_end || isSignaling}
-                        className={`w-full py-8 px-4 rounded-[2.5rem] border-4 transition-all duration-500 font-black text-2xl uppercase tracking-[0.2em] shadow-2xl relative overflow-hidden group active:scale-95 ${
+                        className={`w-full py-8 px-4 rounded-lg border-2 transition-all duration-300 font-black text-xl uppercase tracking-[0.3em] shadow-2xl relative overflow-hidden active:scale-95 ${
                             (mySabotageSignal || isSignaling) 
-                            ? 'bg-red-950/40 border-red-500/50 text-red-500/50 cursor-not-allowed' 
-                            : 'bg-red-600 border-white/20 text-white hover:bg-red-500 active:bg-red-700 shadow-red-600/20'
+                            ? 'bg-zinc-900/40 border-zinc-800 text-zinc-600 cursor-not-allowed' 
+                            : 'bg-neon-purple/20 border-neon-purple text-neon-purple hover:bg-neon-purple hover:text-white shadow-neon-purple/20'
                         }`}
                     >
-                        {isSignaling ? "Signaling..." : (mySabotageSignal ? `⚡ Signal Sent (${signalCount}/${alivePlagiarists})` : (isBlindfoldPhase ? "Eyes Closed..." : (gameState.sabotage_used ? "Sabotage Verified" : (!gameState.mission_timer_end ? "Mission Concluded" : "Signal Sabotage"))))}
+                        {isSignaling ? "SIGNALING..." : (mySabotageSignal ? `⚡ BREACH_SIGNAL_ACTIVE (${signalCount}/${alivePlagiarists})` : (isBlindfoldPhase ? "SYNC_WAITING..." : (gameState.sabotage_used ? "VERIFIED" : (!gameState.mission_timer_end ? "CLOSED" : "SEND_SIGNAL"))))}
                     </button>
                     {gameState.sabotage_used && (
-                        <div className="mt-4 p-4 bg-red-950/20 border border-red-500/30 rounded-2xl flex justify-between items-center animate-fade-enter-active">
-                             <span className="text-red-500 font-black uppercase text-[10px] tracking-[0.2em]">Sabotage Bounty</span>
-                             <span className="text-white font-black text-xl">₹1000</span>
+                        <div className="mt-4 p-4 bg-neon-purple/10 border border-neon-purple/20 rounded-lg flex justify-between items-center animate-fade-enter-active">
+                             <span className="text-neon-purple font-black uppercase text-[10px] tracking-[0.3em]">Sabotage Bonus</span>
+                             <span className="text-white font-black text-xl font-mono">#1000</span>
                         </div>
-                    )}
-                    {isBlindfoldPhase && (
-                        <p className="text-[10px] text-red-500/40 uppercase font-black text-center mt-4 tracking-widest">You have 60s to prepare. Assignment revealed above.</p>
                     )}
                 </section>
             )}
 
             {!isTraitor && gameState.sabotage_used && (
-                <div className="bg-red-950/20 border border-red-500/30 p-4 rounded-2xl flex justify-between items-center animate-pulse">
-                    <span className="text-red-500 font-bold uppercase text-[10px] tracking-widest">Security Breach Detected</span>
-                    <span className="text-white/40 text-[10px]">(-₹1000 from Pot)</span>
+                <div className="bg-red-950/20 border border-red-500/30 p-4 rounded-xl flex justify-between items-center animate-pulse">
+                    <span className="text-red-500 font-black uppercase text-[10px] tracking-widest font-mono">Anomalous Breach Detected</span>
+                    <span className="text-white/40 text-[10px] font-mono">(-#1000 Pot)</span>
                 </div>
             )}
         </div>
@@ -470,45 +500,46 @@ export default function PlayerClient() {
 
   if (gameState?.current_phase === 'majlis') {
     return (
-        <main className="min-h-screen bg-slate-950 text-white p-6 relative overflow-hidden">
+        <main className="min-h-screen bg-black text-white p-6 relative overflow-hidden scanline">
             <RoleBadge />
             <GoldBadge />
 
             {gameState.tie_protocol === 'decree' ? (
                 <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fade-enter-active">
-                     <div className="text-9xl animate-pulse">👑</div>
-                     <div className="text-center space-y-4">
-                        <h2 className="text-4xl font-black serif text-gold italic">Sultan's Decree</h2>
-                        <p className="text-white/40 uppercase tracking-[0.3em] font-black text-xs">The Sultan is deliberating. Maintain silence.</p>
+                     <div className="text-9xl animate-pulse text-neon-cyan"><Cpu className="w-32 h-32 text-neon-cyan" /></div>
+                     <div className="text-center space-y-6">
+                        <h2 className="text-4xl font-black font-mono text-neon-cyan uppercase tracking-tighter shadow-neon-cyan/20">Overlord Protocol</h2>
+                        <p className="text-white/40 uppercase tracking-[0.4em] font-black text-[10px] font-mono">System overwrite in progress...</p>
                      </div>
                 </div>
             ) : gameState.tie_protocol === 'spin' ? (
                 <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fade-enter-active">
-                     <div className="text-9xl animate-spin-slow">✒️</div>
-                     <div className="text-center space-y-4">
-                        <h2 className="text-4xl font-black serif text-red-500 italic">The Pen of Fate</h2>
-                        <p className="text-white/40 uppercase tracking-[0.3em] font-black text-xs">The Ink of destiny is spinning...</p>
+                     <div className="text-9xl animate-spin-slow text-neon-purple"><Terminal className="w-32 h-32 text-neon-purple" /></div>
+                     <div className="text-center space-y-6">
+                        <h2 className="text-4xl font-black font-mono text-neon-purple uppercase tracking-tighter">Decryption Matrix</h2>
+                        <p className="text-white/40 uppercase tracking-[0.4em] font-black text-[10px] font-mono">Randomizing terminal disconnect...</p>
                      </div>
                 </div>
             ) : (
-                <div className="space-y-8 animate-fade-enter-active">
-                    <header className="text-center space-y-2">
-                        <h2 className="text-5xl font-black text-gold serif italic tracking-tighter uppercase">
-                            {gameState.tie_protocol === 'revote' ? 'Re-Vote!' : 'The Majlis'}
+                <div className="space-y-12 animate-fade-enter-active">
+                    <header className="text-center space-y-4">
+                        <h2 className="text-5xl font-black text-neon-cyan font-mono tracking-tighter uppercase shadow-neon-cyan/10">
+                            {gameState.tie_protocol === 'revote' ? 'RE_SYNC_ERROR' : 'Council_Auth'}
                         </h2>
-                        <p className="text-white/40 uppercase tracking-[0.4em] font-black text-[10px]">
-                            {gameState.tie_protocol === 'revote' ? 'Choose carefully between the tied suspects' : 'Debate and Cast Your Vote'}
+                        <p className="text-white/40 uppercase tracking-[0.4em] font-black text-[10px] font-mono">
+                            {gameState.tie_protocol === 'revote' ? 'Consensus failure. Re-voting suspects...' : 'Identify the Anomalous Node'}
                         </p>
                     </header>
 
                     {votedId ? (
-                        <div className="glass p-12 rounded-[3rem] border-2 border-gold/20 text-center space-y-6 animate-scale-up grayscale opacity-50">
-                            <div className="text-6xl">🗳️</div>
-                            <h3 className="text-2xl font-bold serif text-gold italic">Your Fate is Cast</h3>
-                            <p className="text-white/40 text-xs uppercase tracking-widest">Wait for the Sultan's final judgment.</p>
+                        <div className="glass p-12 rounded-xl border-2 border-neon-cyan/20 text-center space-y-8 animate-scale-up grayscale opacity-50 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-neon-cyan animate-shimmer" />
+                            <div className="text-6xl text-neon-cyan">LOGGED</div>
+                            <h3 className="text-2xl font-black font-mono text-neon-cyan uppercase tracking-tighter">Encrypted_Vote</h3>
+                            <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-mono">Wait for Overlord arbitration.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-1 gap-4">
                             {players
                                 .filter(p => p.status === 'alive' && p.id !== playerId)
                                 .filter(p => !gameState.tie_protocol || gameState.tie_protocol !== 'revote' || gameState.tied_player_ids?.includes(p.id))
@@ -516,10 +547,10 @@ export default function PlayerClient() {
                                     <button
                                         key={p.id}
                                         onClick={() => handleVote(p.id)}
-                                        className="btn-premium bg-white/5 p-8 rounded-[2rem] border-2 border-white/5 flex justify-between items-center group active:scale-95 transition-all min-h-[44px]"
+                                        className="btn-premium bg-white/5 p-8 rounded-xl border-2 border-white/5 flex justify-between items-center group active:scale-95 transition-all min-h-[44px] hover:border-neon-cyan/30"
                                     >
-                                        <span className="text-2xl font-black serif italic text-emerald-100 group-hover:text-gold transition-colors">{p.name}</span>
-                                        <span className="text-gold text-xs font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Banish 🖋️</span>
+                                        <span className="text-2xl font-black font-mono uppercase tracking-tighter text-white group-hover:text-neon-cyan transition-colors">{p.name}</span>
+                                        <span className="text-neon-cyan text-[10px] font-black uppercase tracking-[0.3em] opacity-30 group-hover:opacity-100 transition-opacity font-mono">DEACTIVATE_NODE</span>
                                     </button>
                                 ))
                             }
@@ -540,25 +571,25 @@ export default function PlayerClient() {
     }, {});
 
     return (
-      <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
+      <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center text-center relative overflow-hidden scanline">
         <RoleBadge />
         <GoldBadge />
 
         {isTraitor && isAlive ? (
             (gameState.is_revealing || gameState.reveal_target_id) ? (
-                <div className="w-full space-y-8 animate-fade-enter-active">
-                    <div className="text-8xl mb-8 animate-pulse text-red-600">🖋️</div>
-                    <div className="space-y-4">
-                        <h2 className="text-4xl font-bold serif italic text-red-100 uppercase tracking-tighter">The Seal is Set</h2>
-                        <p className="text-white/40 text-xs uppercase tracking-[0.3em] font-black">Your coordination is complete. The night moves on.</p>
+                <div className="w-full space-y-12 animate-fade-enter-active">
+                    <div className="text-8xl mb-8 animate-pulse text-neon-purple drop-shadow-[0_0_20px_rgba(188,19,254,0.5)]"><Terminal className="w-24 h-24 text-neon-purple mx-auto" /></div>
+                    <div className="space-y-6">
+                        <h2 className="text-4xl font-black font-mono text-white uppercase tracking-tighter">BREACH_SIGNAL_SENT</h2>
+                        <p className="text-white/40 text-[10px] uppercase tracking-[0.4em] font-black font-mono">Coordination complete. Silent disconnect pending.</p>
                     </div>
                 </div>
             ) : (
-                <div className="w-full space-y-8 animate-fade-enter-active">
-                    <div className="space-y-2">
-                        <h1 className="text-red-600 font-black uppercase tracking-[0.5em] text-[10px]">Al-Shams: Coordination</h1>
-                        <h2 className="text-4xl font-bold serif italic text-red-500">Seal a Poet's Fate</h2>
-                        <p className="text-white/20 text-[10px] uppercase tracking-widest italic">Signal your intent. Consensus is key.</p>
+                <div className="w-full space-y-10 animate-fade-enter-active">
+                    <div className="space-y-4">
+                        <h1 className="text-neon-purple font-black uppercase tracking-[0.5em] text-[10px] font-mono shadow-neon-purple/20">BLACKOUT_SYNC</h1>
+                        <h2 className="text-4xl font-black font-mono text-white uppercase tracking-tighter">Sever a Terminal</h2>
+                        <p className="text-white/20 text-[10px] uppercase tracking-[0.3em] font-mono">Consensus required for high-security breach.</p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 w-full max-w-sm mx-auto">
@@ -570,22 +601,22 @@ export default function PlayerClient() {
                                 <button
                                     key={p.id}
                                     onClick={() => handleNightVote(p.id)}
-                                    className={`relative p-6 rounded-3xl border-2 active:scale-95 transition-all flex justify-between items-center group min-h-[44px] ${
+                                    className={`relative p-8 rounded-xl border-2 active:scale-95 transition-all flex justify-between items-center group min-h-[44px] ${
                                         isMyVote 
-                                        ? 'bg-red-600/20 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.2)]' 
-                                        : 'bg-white/5 border-white/10 hover:border-red-500/30'
+                                        ? 'bg-neon-purple/10 border-neon-purple shadow-[0_0_30px_rgba(188,19,254,0.2)]' 
+                                        : 'bg-white/5 border-white/5 hover:border-neon-purple/30'
                                     }`}
                                 >
-                                    <div className="flex flex-col items-start translate-x-2">
-                                        <span className="text-2xl font-black serif italic text-red-100">{p.name}</span>
-                                        {isMyVote && <span className="text-[10px] uppercase font-bold text-red-500 tracking-tighter">My Selection</span>}
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-2xl font-black font-mono uppercase tracking-tighter text-white">{p.name}</span>
+                                        {isMyVote && <span className="text-[9px] uppercase font-black text-neon-purple tracking-widest mt-1">SELECTION_CAPTURED</span>}
                                     </div>
                                     
                                     {voteCount > 0 && (
                                         <div className="flex items-center gap-2">
-                                            <div className="flex -space-x-2">
+                                            <div className="flex -space-x-1">
                                                 {[...Array(voteCount)].map((_, i) => (
-                                                    <div key={i} className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(220,38,38,1)] animate-pulse" />
+                                                    <div key={i} className="w-3 h-3 rounded-sm bg-neon-purple shadow-[0_0_10px_rgba(188,19,254,1)] animate-pulse" />
                                                 ))}
                                             </div>
                                         </div>
@@ -595,17 +626,17 @@ export default function PlayerClient() {
                         })}
                     </div>
 
-                    <div className="glass p-6 rounded-3xl border border-red-500/10 text-white/40 italic text-xs max-w-xs mx-auto leading-relaxed">
-                        The Sultan will confirm the final silence based on your collective intention.
+                    <div className="glass p-6 rounded-xl border border-neon-purple/10 text-white/30 font-mono uppercase tracking-widest text-[9px] max-w-xs mx-auto leading-relaxed">
+                        Overlord AI protocol: Multiple signals required for node termination.
                     </div>
                 </div>
             )
         ) : (
-            <div className="space-y-8 opacity-20 grayscale transition-all duration-1000 scale-90">
-                <div className="text-9xl mb-4 animate-pulse">🌙</div>
-                <div className="space-y-2">
-                    <h2 className="text-5xl font-black text-gray-400 serif italic uppercase tracking-tighter">Sleep...</h2>
-                    <p className="text-xs uppercase tracking-[0.4em] font-bold">The Mehfil is quiet</p>
+            <div className="space-y-10 opacity-20 transition-all duration-1000 scale-90 grayscale">
+                <div className="text-9xl mb-4 animate-pulse text-white/40"><Zap className="w-32 h-32 text-white mx-auto" strokeWidth={1} /></div>
+                <div className="space-y-4">
+                    <h2 className="text-5xl font-black text-white/40 font-mono uppercase tracking-tighter">DATA_BLACKOUT</h2>
+                    <p className="text-[10px] uppercase tracking-[0.5em] font-black font-mono">Neural Interface: OFFLINE</p>
                 </div>
             </div>
         )}
@@ -618,22 +649,23 @@ export default function PlayerClient() {
       const myRank = sortedPlayers.findIndex(p => p.id === playerId) + 1;
 
       return (
-        <main className="min-h-screen bg-emerald-deep flex flex-col items-center justify-center p-8 text-center">
-            <div className="glass p-10 rounded-3xl border border-emerald-400/30 space-y-8 max-w-sm w-full">
-                <div className="space-y-2">
-                    <h1 className="text-5xl font-black serif italic text-white uppercase tracking-tighter">Gathering Payout</h1>
-                    <p className="text-emerald-400/60 uppercase text-[10px] font-black tracking-widest">The Sultan honors his poets</p>
+        <main className="min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center scanline">
+            <div className="glass p-12 rounded-xl border border-neon-cyan/30 space-y-10 max-w-sm w-full relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-neon-cyan/5 -rotate-45 translate-x-8 -translate-y-8" />
+                <div className="space-y-4">
+                    <h1 className="text-5xl font-black font-mono text-white uppercase tracking-tighter shadow-neon-cyan/10">Vault_Exit</h1>
+                    <p className="text-neon-cyan/50 uppercase text-[10px] font-black tracking-[0.4em] font-mono">Overlord AI verification complete</p>
                 </div>
                 
-                <div className="py-8 bg-black/20 rounded-2xl border border-white/5 space-y-2">
-                    <div className="text-6xl font-black text-gold font-mono drop-shadow-[0_0_15px_rgba(212,175,55,0.4)]">₹{me.gathering_gold || 0}</div>
-                    <div className="text-xs text-white/40 uppercase tracking-widest font-black">Your Total Wealth</div>
-                    <div className="inline-block mt-4 px-4 py-1 bg-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-black uppercase tracking-widest">Rank #{myRank} in the Mehfil</div>
+                <div className="py-10 bg-black/40 rounded-xl border border-white/5 space-y-3 shadow-inner">
+                    <div className="text-6xl font-black text-neon-cyan font-mono drop-shadow-[0_0_20px_rgba(0,243,255,0.4)]">#{me.gathering_gold || 0}</div>
+                    <div className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-black font-mono">TOTAL_CREDITS</div>
+                    <div className="inline-block mt-6 px-4 py-1.5 bg-neon-cyan/10 rounded-full text-neon-cyan text-[10px] font-black uppercase tracking-widest font-mono">RANK #{myRank} // NETWORK_NODE</div>
                 </div>
 
-                <p className="text-white/60 text-xs italic">The coins jingle in your pouch as you leave the Sultan's court.</p>
+                <p className="text-white/40 text-[10px] uppercase tracking-widest font-mono leading-relaxed px-4">Neural link sync complete. Credits secured in encrypted cold-storage.</p>
             </div>
-            <p className="mt-12 text-white/20 text-[10px] uppercase font-bold tracking-widest">Shukran. Until the next Mehfil.</p>
+            <p className="mt-12 text-white/20 text-[10px] uppercase font-black tracking-[0.6em] font-mono">CONNECTION TERMINATED // G_SYNC_OK</p>
         </main>
       );
   }
@@ -642,47 +674,45 @@ export default function PlayerClient() {
     const winners = gameState.winner_faction;
     const iWon = (winners === 'poets' && !isTraitor) || (winners === 'plagiarists' && isTraitor);
     
-    const topAliveVictors = (() => {
-        const winningRole = winners === 'poets' ? 'sukhan_war' : 'naqal_baaz';
-        const factionAlive = players.filter(p => p.role === winningRole && p.status === 'alive');
-        if (factionAlive.length === 0) return [];
-        const maxScore = Math.max(...factionAlive.map(p => p.private_gold || 0));
-        return factionAlive.filter(p => (p.private_gold || 0) === maxScore);
-    })();
-    
-    const amISupreme = topAliveVictors.some(v => v.id === playerId);
-
     return (
-      <main className={`min-h-screen flex flex-col items-center justify-center p-8 text-center ${iWon ? 'bg-emerald-deep' : 'bg-red-950'}`}>
-        <div className="glass p-10 rounded-3xl border border-white/20 animate-scale-up space-y-6">
-            <h1 className="text-6xl font-black serif italic text-gold uppercase">
-                {amISupreme ? '✨ Supreme Victor ✨' : (iWon ? 'Victory' : 'Defeat')}
+      <main className={`min-h-screen flex flex-col items-center justify-center p-8 text-center scanline ${iWon ? 'bg-background' : 'bg-obsidian'}`}>
+        <div className="glass p-12 rounded-xl border border-neon-cyan/20 animate-scale-up space-y-8 max-w-md w-full relative">
+            <div className={`absolute -top-12 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full border-2 font-black font-mono text-sm uppercase tracking-[0.4em] shadow-2xl ${
+                iWon ? 'bg-neon-cyan text-black border-white shadow-neon-cyan/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+            }`}>
+                {iWon ? 'OP_SUCCESS' : 'OP_FAILURE'}
+            </div>
+
+            <h1 className={`text-6xl font-black font-mono uppercase tracking-tighter ${iWon ? 'text-neon-cyan drop-shadow-[0_0_15px_rgba(0,243,255,0.4)]' : 'text-zinc-600'}`}>
+                {iWon ? 'PREVAILED' : 'DEFEATED'}
             </h1>
-            <p className="text-white text-xl uppercase tracking-widest font-black opacity-80 decoration-gold underline underline-offset-8">
-                {amISupreme ? 'Your verses have conquered the Mehfil' : `The ${winners} have prevailed`}
+            
+            <p className="text-white/60 text-xs uppercase tracking-[0.4em] font-black font-mono">
+                {winners === 'poets' ? 'Glitch-Runners Have Secured the Verse' : 'System-Spies Have Corrupted the Network'}
             </p>
-            <div className="pt-10 space-y-6">
+
+            <div className="pt-8 space-y-8">
                 {winners === 'poets' && (
-                   <div className="space-y-2 pb-6 border-b border-white/10">
-                       <div className="text-gold font-mono text-3xl font-black">₹{gameState.eidi_pot > 0 ? gameState.eidi_pot : (gameState.last_game_pot || 0)}</div>
-                       <div className="text-[10px] text-white/40 uppercase tracking-widest">Total Khazana Secured</div>
+                   <div className="space-y-2 pb-8 border-b border-white/5">
+                       <div className="text-neon-cyan font-mono text-4xl font-black italic drop-shadow-[0_0_10px_rgba(0,243,255,0.3)]">#{gameState.eidi_pot > 0 ? gameState.eidi_pot : (gameState.last_game_pot || 0)}</div>
+                       <div className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-black font-mono">TOTAL_RECOVERED_CREDITS</div>
                    </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-8">
                     <div className="space-y-2">
-                        <div className="text-gold font-mono text-2xl font-black">₹{me.private_gold}</div>
-                        <div className="text-[8px] text-white/40 uppercase tracking-widest">
-                            {!isTraitor ? 'Game Share' : 'Sabotages'}
+                        <div className="text-neon-cyan font-mono text-3xl font-black">#{me.private_gold}</div>
+                        <div className="text-[9px] text-white/30 uppercase tracking-widest font-black font-mono">
+                            {!isTraitor ? 'SYNC_REWARD' : 'BREACH_BONUS'}
                         </div>
                     </div>
-                    <div className="space-y-2 border-l border-white/10 pl-4">
-                        <div className="text-emerald-400 font-mono text-2xl font-black">₹{me.gathering_gold || 0}</div>
-                        <div className="text-[8px] text-white/40 uppercase tracking-widest">Gathering Total</div>
+                    <div className="space-y-2 border-l border-white/5 pl-8">
+                        <div className="text-neon-purple font-mono text-3xl font-black">#{me.gathering_gold || 0}</div>
+                        <div className="text-[9px] text-white/30 uppercase tracking-widest font-black font-mono">NET_ACCUMULATION</div>
                     </div>
                 </div>
             </div>
         </div>
-        <p className="mt-12 text-white/40 text-xs italic tracking-tighter uppercase font-bold">Wait for the Sultan to reset the Mehfil</p>
+        <p className="mt-12 text-white/20 text-[9px] uppercase font-black tracking-[0.5em] font-mono animate-pulse">Wait for Overlord AI to reset global matrix...</p>
       </main>
     );
   }

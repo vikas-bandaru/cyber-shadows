@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mehfil-e-Khaas",
-  description: "A game of poetry, wit, and deception",
+  title: "Cyber Shadows",
+  description: "A game of deception and deduction",
   icons: {
     icon: "/favicon.ico",
   },

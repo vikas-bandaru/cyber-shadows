@@ -5,10 +5,11 @@ export const dynamic = 'force-dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useGameState } from '@/hooks/useGameState';
 import { usePlayers } from '@/hooks/usePlayers';
-import { advancePhase, assignRoles, evaluateWinCondition, resetGame, deleteRoom, startMission, liquidatePot, GamePhase, Player, Mission } from '@/lib/game-logic';
+import { advancePhase, assignRoles, evaluateWinCondition, resetGame, deleteRoom, startMission, liquidatePot, GamePhase, Player, Mission, NARRATOR_SCRIPTS } from '@/lib/game-logic';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import * as Popover from '@radix-ui/react-popover';
+import { Terminal, Cpu, Shield, Users, Zap, Search, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HostDashboard() {
@@ -25,7 +26,7 @@ export default function HostDashboard() {
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [missionOutcome, setMissionOutcome] = useState<'success' | 'failed' | null>(null);
   const [isVotesLocked, setIsVotesLocked] = useState(false);
-  const [banishedPlayerId, setBanishedPlayerId] = useState<string | null>(null);
+  const [deactivatedNodeId, setDeactivatedNodeId] = useState<string | null>(null);
   const [silenceConfirmed, setSilenceConfirmed] = useState(false);
   const [origin, setOrigin] = useState('');
   const [devPlagiaristCount, setDevPlagiaristCount] = useState(1);
@@ -39,10 +40,10 @@ export default function HostDashboard() {
   const [isMobile, setIsMobile] = useState(false);
   const [hostName, setHostName] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [isBanishmentConfirmed, setIsBanishmentConfirmed] = useState(false);
+  const [isTerminationConfirmed, setIsTerminationConfirmed] = useState(false);
 
   useEffect(() => {
-    setHostName(localStorage.getItem('playerName'));
+    setHostName(localStorage.getItem('cyber_shadows_runner'));
   }, []);
 
   const isHostAPlayer = useMemo(() => {
@@ -179,6 +180,7 @@ export default function HostDashboard() {
   const canVerifySabotage = useMemo(() => {
     if (!gameState || isVerifying || gameState.sabotage_used || isSabotageVerified || currentSignals === 0) return false;
     
+    // Unanimous signals from all alive spies
     const requiredSignals = alivePlagiarists.length;
     const isUnanimous = currentSignals === requiredSignals && requiredSignals > 0;
     const isTimeout = timeLeft === 0 && phase === 'mission';
@@ -257,11 +259,11 @@ export default function HostDashboard() {
             setVotes([]);
             setNightVotes([]);
             setIsVotesLocked(false);
-            setBanishedPlayerId(null);
+            setDeactivatedNodeId(null);
             setMissionOutcome(null);
             setIsSabotageVerified(false);
             setSilenceConfirmed(false);
-            setIsBanishmentConfirmed(false);
+            setIsTerminationConfirmed(false);
             
             // Clear reveal state when moving to a new phase
             await supabase.from('game_rooms').update({ 
@@ -303,23 +305,23 @@ export default function HostDashboard() {
   const tutorialContent = [
     {
       step: 1,
-      title: "The Canvas",
-      heading: "Cast the Court",
-      text: "Open this on a TV or Projector so all poets can see the secret couplet.",
+      title: "The Mainframe",
+      heading: "Initialize the Node",
+      text: "Open this on a TV or Projector so all runners can see the data stream.",
       target: "Step 1: Open Public Display"
     },
     {
       step: 2,
-      title: "The Gathering",
-      heading: "Assemble the Court",
-      text: `Invite poets using the room code. You need ${gameState?.min_players_required ?? 8} players to begin.`,
+      title: "The Connection",
+      heading: "Sync the Runners",
+      text: `Invite runners using the access code. You need ${gameState?.min_players_required ?? 8} players to begin.`,
       target: "Step 2: Join Link"
     },
     {
       step: 3,
-      title: "The Decree",
-      heading: "Begin the Mehfil",
-      text: "Once everyone is here, click 'Assign Roles' to start the performance.",
+      title: "The Breach",
+      heading: "Start the Session",
+      text: "Once everyone is synced, click 'Initialize System' to start the heist.",
       target: "Step 3: Start Button"
     }
   ];
@@ -334,7 +336,7 @@ export default function HostDashboard() {
     setIsAssigning(true);
     console.log("Starting game with", players.length, "players...");
     
-    // 1. Immediate Optimistic UI Update for the Sultan
+    // 1. Immediate Optimistic UI Update for the Overlord
     // This ensures the Teleprompter updates and the button changes INSTANTLY
     setGameState(prev => prev ? { ...prev, current_phase: 'reveal' } : null);
     
@@ -385,24 +387,24 @@ export default function HostDashboard() {
   };
 
   const handleBanish = async (playerId?: string) => {
-    const targetId = playerId || banishedPlayerId;
+    const targetId = playerId || deactivatedNodeId;
     if (!targetId) return;
     
     // Optimistic Update
-    setIsBanishmentConfirmed(true);
+    setIsTerminationConfirmed(true);
     
     const { error } = await supabase.from('players').update({ status: 'banished' }).eq('id', targetId);
     if (error) {
-        console.error("Banishment Failed:", error);
-        setIsBanishmentConfirmed(false);
-        alert("Banishment failed: " + error.message);
+        console.error("Termination Failed:", error);
+        setIsTerminationConfirmed(false);
+        alert("Termination failed: " + error.message);
         return;
     }
     
-    // Reset tie protocol after banishment
+    // Reset tie protocol after termination
     await supabase.from('game_rooms').update({ tie_protocol: 'none', tied_player_ids: [] }).eq('id', roomId);
     
-    // Check win condition immediately after banishment
+    // Check win condition immediately after termination
     const winner = await evaluateWinCondition(roomId!);
     if (winner) {
         await handleTransition('end');
@@ -425,7 +427,7 @@ export default function HostDashboard() {
   };
 
   const [isSpinning, setIsSpinning] = useState(false);
-  const handleSpinThePen = async () => {
+  const handleNeuralOverride = async () => {
     if (!roomId) return;
     setIsSpinning(true);
     
@@ -484,11 +486,10 @@ export default function HostDashboard() {
     }
 
     // Fresh fetch to prevent race conditions
-    // Use select('*') to bypass potential schema cache issues with specific columns
     const { data: latestRoom, error: fetchError } = await supabase.from('game_rooms').select('*').eq('id', roomId).single();
-    if (fetchError) {
+    if (fetchError || !latestRoom) {
         console.error("Sabotage Fetch Failed:", fetchError);
-        alert(`Verification Error: ${fetchError.message}`);
+        alert(`Verification Error: ${fetchError?.message || 'Room not found'}`);
         setIsVerifying(false);
         return;
     }
@@ -615,12 +616,12 @@ export default function HostDashboard() {
       setVotes([]);
       setNightVotes([]);
       setIsVotesLocked(false);
-      setBanishedPlayerId(null);
+      setDeactivatedNodeId(null);
       setMissionOutcome(null);
       setIsSabotageVerified(false);
       setActiveMission(null); // Clear previous mission details
       setSilenceConfirmed(false);
-      setIsBanishmentConfirmed(false);
+      setIsTerminationConfirmed(false);
       setIsVerifying(false);
       
       // 2. Optimistic Phase Reset
@@ -649,7 +650,7 @@ export default function HostDashboard() {
     if (!roomId) return;
     if (confirm("🚨 EMERGENCY RESET: This will permanently delete this room and all its data. Are you sure?")) {
         await deleteRoom(roomId);
-        localStorage.removeItem('playerName');
+        localStorage.removeItem('cyber_shadows_runner');
         localStorage.removeItem('playerId');
         localStorage.removeItem('roomId');
         localStorage.removeItem('isHost');
@@ -659,10 +660,10 @@ export default function HostDashboard() {
 
   if (gameLoading || playersLoading) {
     return (
-      <div className="min-h-screen bg-crimson-black flex items-center justify-center">
+      <div className="min-h-screen bg-obsidian flex items-center justify-center scanline">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto" />
-          <h2 className="serif text-2xl text-gold animate-pulse">Loading God View...</h2>
+          <div className="w-16 h-16 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
+          <h2 className="font-mono text-2xl text-neon-cyan animate-pulse uppercase tracking-tighter">Initializing Overlord View...</h2>
         </div>
       </div>
     );
@@ -670,13 +671,13 @@ export default function HostDashboard() {
 
   if (!gameState) {
     return (
-      <div className="min-h-screen bg-crimson-black flex flex-col items-center justify-center p-6 text-center">
-        <div className="glass p-12 rounded-3xl border border-gold/20 max-w-md">
-          <h1 className="serif text-4xl text-gold mb-4">Room Not Found</h1>
-          <p className="text-white/60 mb-8 font-sans">The Sultan has moved to another court, or this room code has expired.</p>
+      <div className="min-h-screen bg-obsidian flex flex-col items-center justify-center p-6 text-center scanline">
+        <div className="glass p-12 rounded-xl border border-neon-cyan/20 max-w-md">
+          <h1 className="font-mono text-4xl text-neon-cyan mb-4 uppercase tracking-tighter">Node Not Found</h1>
+          <p className="text-white/40 mb-8 font-mono text-xs uppercase tracking-widest">The Overlord has moved to another node, or this access code has expired.</p>
           <button 
             onClick={() => router.push('/')}
-            className="btn-premium bg-gold text-background px-8 py-3 rounded-xl font-bold uppercase tracking-widest"
+            className="btn-premium bg-neon-cyan text-black px-8 py-3 rounded-lg font-black uppercase tracking-[0.2em] text-[10px]"
           >
             Return to Entrance
           </button>
@@ -687,14 +688,14 @@ export default function HostDashboard() {
 
   const currentMission = activeMission;
   return (
-    <main className="min-h-screen bg-crimson-black text-white p-4 lg:p-10 space-y-6 relative">
+    <main className="min-h-screen bg-background text-white p-4 lg:p-10 space-y-6 relative scanline">
       
       {/* HEADER: Room Code & Public View */}
-      <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10 gap-4">
+      <div className="flex justify-between items-center bg-white/5 p-4 rounded-xl border border-white/5 gap-4">
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
-            <div className="text-[10px] uppercase font-black text-gold/40 tracking-widest mb-1">Room Code</div>
-            <span className="text-3xl font-black text-gold leading-none">{roomCode}</span>
+            <div className="text-[10px] uppercase font-black text-neon-cyan/40 tracking-widest mb-1 font-mono">Room Code</div>
+            <span className="text-3xl font-black text-neon-cyan leading-none font-mono tracking-tighter shadow-neon-cyan/10">{roomCode}</span>
           </div>
           <div className="h-10 w-[1px] bg-white/10" />
           <div className="flex flex-col">
@@ -719,7 +720,7 @@ export default function HostDashboard() {
               onClick={() => window.open(`/play/${roomCode}`, '_blank')}
               className="btn-premium bg-emerald-600/10 text-emerald-500 border-emerald-500/40 px-6 py-4 rounded-full shadow-lg"
             >
-              Open My Player View 🖋️
+              Open My Runner View 🔓
             </button>
           )}
           <div className="relative">
@@ -730,9 +731,9 @@ export default function HostDashboard() {
                     window.open(`/display/${roomCode}`, '_blank');
                     setTutorialStep(2);
                   }}
-                  className={`btn-premium bg-gold/10 text-gold border-gold/40 px-6 py-4 rounded-full shadow-lg relative ${showTooltips && tutorialStep === 1 ? 'animate-pulse-gold' : ''}`}
+                  className={`btn-premium bg-neon-cyan/10 text-neon-cyan border-neon-cyan/40 px-6 py-4 rounded-xl shadow-lg relative font-mono text-[10px] font-black uppercase tracking-widest ${showTooltips && tutorialStep === 1 ? 'animate-pulse-gold' : ''}`}
                 >
-                  Open Public Display 📺
+                  Open Display Terminal 📺
                 </button>
               </Popover.Trigger>
               <Popover.Portal>
@@ -745,21 +746,21 @@ export default function HostDashboard() {
                   <motion.div 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="w-64 glass p-6 rounded-2xl border border-gold/30 shadow-[0_0_40px_rgba(212,175,55,0.2)] animate-float"
+                    className="w-64 glass p-6 rounded-xl border border-neon-cyan/30 shadow-[0_0_40px_rgba(0,243,255,0.1)] animate-float"
                   >
-                    <div className="text-[10px] font-black text-gold uppercase mb-1 tracking-widest flex justify-between">
+                    <div className="text-[10px] font-black text-neon-cyan uppercase mb-2 tracking-widest flex justify-between font-mono">
                       <span>Step 1: The Canvas</span>
                       <span>1/3</span>
                     </div>
-                    <h4 className="serif text-white font-bold mb-2">Cast the Court</h4>
-                    <p className="text-xs text-white/70 leading-relaxed mb-4">Open this on a TV or Projector so all poets can see the secret couplet and phase updates.</p>
+                    <h4 className="font-mono text-white font-black mb-2 uppercase text-[10px]">Initialize the Node</h4>
+                    <p className="text-[10px] text-white/50 leading-relaxed mb-4 font-mono uppercase">Open this on a TV or Projector so all runners can see the data stream and decryption status.</p>
                     <button 
                       onClick={() => setTutorialStep(2)}
-                      className="text-[10px] font-black uppercase text-gold hover:text-white transition-colors flex items-center gap-2"
+                      className="text-[10px] font-black uppercase text-neon-cyan hover:text-white transition-colors flex items-center gap-2 font-mono"
                     >
                       Got it, Next Step →
                     </button>
-                    <Popover.Arrow className="fill-gold/20" />
+                    <Popover.Arrow className="fill-neon-cyan/20" />
                   </motion.div>
                 </Popover.Content>
               </Popover.Portal>
@@ -768,14 +769,14 @@ export default function HostDashboard() {
           <div className="flex flex-col items-center gap-1">
             <button 
               onClick={() => setIsToolkitOpen(true)}
-              className="w-12 h-12 rounded-full bg-gold text-background border-4 border-gold/50 flex items-center justify-center text-xl font-black shadow-lg hover:scale-110 active:scale-90 transition-all font-sans"
+              className="w-12 h-12 rounded-lg bg-neon-cyan text-black border-2 border-neon-cyan/50 flex items-center justify-center text-xl font-black shadow-lg hover:scale-110 active:scale-90 transition-all font-mono"
               title="Host Toolkit"
             >
               ?
             </button>
             <button 
               onClick={() => setShowTooltips(!showTooltips)}
-              className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-full border transition-all ${showTooltips ? 'bg-gold text-background border-gold' : 'bg-transparent text-gold/40 border-gold/20'}`}
+              className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-full border transition-all ${showTooltips ? 'bg-neon-cyan text-black border-neon-cyan' : 'bg-transparent text-neon-cyan/40 border-neon-cyan/20'}`}
             >
               Guide {showTooltips ? 'ON' : 'OFF'}
             </button>
@@ -786,9 +787,9 @@ export default function HostDashboard() {
       {/* 1. THE TELEPROMPTER */}
       <Popover.Root open={showTooltips && !isMobile && tutorialStep === 3}>
         <Popover.Trigger asChild>
-          <section className="bg-gold text-crimson-black p-6 rounded-2xl shadow-xl border-4 border-gold/50 animate-bounce-subtle relative overflow-hidden">
+          <section className="bg-neon-cyan text-black p-6 rounded-xl shadow-xl border-2 border-neon-cyan/50 animate-bounce-subtle relative overflow-hidden">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-xs uppercase font-black tracking-widest opacity-70">Sultan's Teleprompter</h3>
+              <h3 className="text-xs uppercase font-black tracking-widest opacity-70 font-mono">Overlord's Teleprompter</h3>
               <button 
                 onClick={() => setShowScript(!showScript)}
                 className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all ${
@@ -800,23 +801,23 @@ export default function HostDashboard() {
             </div>
             
             <div className="space-y-4">
-              <p className="text-2xl lg:text-3xl font-bold serif leading-tight">
-                {phase === 'lobby' && `Wait for at least ${gameState.min_players_required ?? 4} poets. Once gathered, click 'Assign Roles'.`}
-                {phase === 'reveal' && "Role Reveal: Tell everyone to look at their screens. One or more among them are Plagiarists. They must keep it secret!"}
-                {phase === 'mission' && !gameState.mission_timer_end && "Announce: 60s Blindfold Session. Tell everyone to close their eyes. Plagiarists, check your assignments. Silence for 60s!"}
-                {phase === 'mission' && gameState.mission_timer_end && "Mission in progress. Poets are solving. Elect a Speaker to state the final answer quietly to you."}
+              <p className="text-xl lg:text-2xl font-black font-mono leading-tight uppercase tracking-tighter text-black/80">
+                {phase === 'lobby' && `Awaiting minimum ${gameState.min_players_required ?? 4} nodes. Click 'INITIALIZE' once synced.`}
+                {phase === 'reveal' && "Identity Sync: Ensure all runners have secure links. Spies are now active in the stream."}
+                {phase === 'mission' && !gameState.mission_timer_end && "Announce: 60s Dark-Sync. Firewall breach initialization. Runners, eyes off the stream."}
+                {phase === 'mission' && gameState.mission_timer_end && "Breach in progress. Data packets are flowing. Data-Lead must verify the hash quietly."}
                 {phase === 'majlis' && (
-                  gameState?.tie_protocol === 'revote' ? "The poets are divided. A Re-Vote is in progress. Only the tied candidates can be selected." :
-                  gameState?.tie_protocol === 'spin' ? "The Pen of Fate will decide the Plagiarist." :
-                  gameState?.tie_protocol === 'decree' ? "Sultan's Decree: You must hold the final power to banish a poet." :
-                  "Majlis Open: Debate and cast votes to banish suspects. Lead the debate!"
+                  gameState?.tie_protocol === 'revote' ? "Conflict detected. Re-Sync in progress. Only flagged nodes available for termination." :
+                  gameState?.tie_protocol === 'spin' ? "Decryption Matrix protocol will decide the node disconnect." :
+                  gameState?.tie_protocol === 'decree' ? "Overlord Command: Execute final node termination via manual override." :
+                  "Council Protocol: Debate and flag anomalous nodes for disconnection. Initiate the purge."
                 )}
                 {phase === 'night' && (
                   silenceConfirmed 
-                  ? "Poet silenced. Ready to announce the results to the room." 
-                  : "Shhh! Tell everyone to close their eyes. Wait for the Plagiarists to vote on their phones. Once identified, click Confirm."
+                  ? "Node disconnected. Broadcasting sequence result to the network." 
+                  : "Scanning! Blackout protocol active. System-Spies are voting on their terminals. Confirm once identified."
                 )}
-                {phase === 'end' && "The Mehfil is over. Reveal the identities and announce the winners!"}
+                {phase === 'end' && "Breach complete. All credentials revealed. Announce the network victors."}
               </p>
             </div>
 
@@ -824,14 +825,15 @@ export default function HostDashboard() {
               <div className="animate-fade-in py-3 px-4 bg-background/5 border-t border-background/10 mt-4 rounded-xl">
                  <div className="text-[8px] uppercase font-black opacity-40 mb-1 tracking-widest">Narrator Script (Read Aloud)</div>
                  <p className="text-lg italic font-medium opacity-90">
-                    {phase === 'lobby' && "Welcome to the Mehfil-e-Khaas! Today, poetry meets betrayal. Poets, gather your thoughts. Plagiarists, sharpen your knives."}
-                    {phase === 'reveal' && "Look to your devices. Your destiny in this court is written. Keep your secret guarded with your life."}
-                    {phase === 'mission' && !gameState.mission_timer_end && "The court falls dark. Poets, close your eyes. Plagiarists... reveal yourselves to one another."}
-                    {phase === 'mission' && gameState.mission_timer_end && "The challenge is set. Solve the couplet before the sand runs out. Speaker, state your case."}
-                    {phase === 'majlis' && "Let the Majlis begin! The scent of a Plagiarist is in the air. Debate, discuss... and decide who leaves the court."}
-                    {phase === 'night' && "The night deepens. Everyone, eyes closed. Plagiarists... choose the voice you wish to silence."}
-                    {phase === 'end' ? (gameState.winner_faction === 'poets' ? "Justice is served! The Sukhan-war (Poets) prevail!" : "The Naqal-baaz (Plagiarists) rule the City!") 
-                     : (phase === 'night' ? "The court has fallen. The Plagiarists rule the night." : "The Sultan's word is law. Listen closely to the decree.") }
+                    {phase === 'lobby' && NARRATOR_SCRIPTS.lobby}
+                    {phase === 'reveal' && NARRATOR_SCRIPTS.reveal}
+                    {phase === 'mission' && !gameState.mission_timer_end && NARRATOR_SCRIPTS.mission_start}
+                    {phase === 'mission' && gameState.mission_timer_end && NARRATOR_SCRIPTS.mission_progress}
+                    {phase === 'majlis' && NARRATOR_SCRIPTS.council}
+                    {phase === 'night' && NARRATOR_SCRIPTS.blackout}
+                    {phase === 'end' ? (gameState.winner_faction === 'poets' ? NARRATOR_SCRIPTS.end_runners : NARRATOR_SCRIPTS.end_spies) 
+                     : (phase === 'night' ? NARRATOR_SCRIPTS.sync_fallback : '') }
+                    {phase === 'mission' && !NARRATOR_SCRIPTS.mission_start && !NARRATOR_SCRIPTS.mission_progress && NARRATOR_SCRIPTS.decree}
                  </p>
               </div>
             )}
@@ -847,89 +849,86 @@ export default function HostDashboard() {
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-72 glass p-6 rounded-2xl border border-gold/30 shadow-[0_0_40px_rgba(212,175,55,0.2)] font-sans"
+              className="w-72 glass p-6 rounded-xl border border-neon-cyan/30 shadow-[0_0_40px_rgba(0,243,255,0.1)] font-mono"
             >
-              <div className="text-[10px] font-black text-gold uppercase mb-1 tracking-widest flex justify-between">
+              <div className="text-[10px] font-black text-neon-cyan uppercase mb-2 tracking-[0.2em] flex justify-between">
                 <span>Step 3: The Decree</span>
                 <span>3/3</span>
               </div>
-              <h4 className="serif text-white font-bold mb-2">The Sultan's Power</h4>
-              <p className="text-xs text-white/70 leading-relaxed mb-4">Once poets have gathered, click <strong>Assign Roles & Start</strong> in the panel below to begin the Mehfil.</p>
+              <h4 className="font-black text-white mb-2 uppercase text-[10px]">Overlord Authorization</h4>
+              <p className="text-[10px] text-white/50 leading-relaxed mb-4 uppercase">Once runners have synced, click <strong>INITIALIZE_SYSTEM</strong> in the control panel to begin the heist.</p>
               <div className="flex justify-between items-center">
                 <button 
                   onClick={() => setTutorialStep(2)}
                   className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors"
                 >
-                  ← Back
+                  ← BACK
                 </button>
                 <button 
                   onClick={() => setShowTooltips(false)}
-                  className="text-[10px] font-black uppercase text-gold hover:text-white transition-colors"
+                  className="text-[10px] font-black uppercase text-neon-cyan hover:text-white transition-colors"
                 >
-                  Finish
+                  FINISH
                 </button>
               </div>
-              <Popover.Arrow className="fill-gold/20" />
+              <Popover.Arrow className="fill-neon-cyan/10" />
             </motion.div>
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
 
       {/* HOST TOOLKIT DRAWER */}
-      <div className={`fixed inset-y-0 right-0 w-80 bg-[#f4e4bc] text-[#2c1810] shadow-2xl z-50 transform transition-transform duration-500 ease-in-out border-l-8 border-[#d4af37]/30 ${isToolkitOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="h-full flex flex-col p-8 serif relative overflow-hidden">
-          {/* Manuscript Texture Overlay */}
-          <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/paper.png')]" />
-          
-          <div className="flex justify-between items-center mb-8 relative z-10">
-            <h2 className="text-2xl font-bold italic border-b-2 border-[#2c1810]/20 pb-1">The Sultan's Toolkit</h2>
-            <div className="flex gap-2 items-center">
+      <div className={`fixed inset-y-0 right-0 w-80 bg-obsidian text-white shadow-2xl z-50 transform transition-transform duration-500 ease-in-out border-l-2 border-neon-cyan/20 ${isToolkitOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="h-full flex flex-col p-8 font-mono relative overflow-hidden scanline">
+          <div className="flex justify-between items-center mb-8 relative z-10 border-b border-white/10 pb-4">
+            <h2 className="text-xl font-black uppercase tracking-tighter text-neon-cyan">Overlord_Toolkit</h2>
+            <div className="flex gap-4 items-center">
               <button 
                 onClick={() => setShowTooltips(!showTooltips)}
-                className={`w-6 h-6 rounded-full border border-[#2c1810]/20 flex items-center justify-center text-[8px] font-black transition-all ${showTooltips ? 'bg-[#8b0000] text-white border-[#8b0000]' : 'hover:bg-[#2c1810]/10'}`}
+                className={`w-6 h-6 rounded border border-white/20 flex items-center justify-center text-[8px] font-black transition-all ${showTooltips ? 'bg-neon-cyan text-black border-neon-cyan' : 'hover:bg-white/10'}`}
                 title="Toggle Guide"
               >
                 i
               </button>
-              <button onClick={() => setIsToolkitOpen(false)} className="text-2xl hover:scale-125 transition-transform">×</button>
+              <button onClick={() => setIsToolkitOpen(false)} className="text-2xl hover:text-neon-cyan transition-colors font-mono">×</button>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-8 relative z-10 custom-scrollbar pr-2">
             <section className="space-y-4">
-              <h3 className="text-[10px] uppercase font-black tracking-widest opacity-50 border-l-2 border-[#d4af37] pl-2">Glossary of the Court</h3>
-              <div className="space-y-4">
+              <h3 className="text-[10px] uppercase font-black tracking-widest text-neon-cyan/40 border-l-2 border-neon-cyan pl-2">Network_Glossary</h3>
+              <div className="space-y-6">
                 <div className="group">
-                  <div className="font-bold italic text-lg text-[#8b0000]">Sukhan-war</div>
-                  <div className="text-sm opacity-80 leading-relaxed font-sans">The True Poet. Your mission is to solve the couplet and identify the Naqal-baaz.</div>
+                  <div className="font-black text-xs text-neon-cyan uppercase tracking-widest mb-1">Glitch Runner</div>
+                  <div className="text-[10px] text-white/40 leading-relaxed font-mono uppercase">Authorized node. Secondary goal: identify system anomalies and execute terminal purge.</div>
                 </div>
                 <div className="group">
-                  <div className="font-bold italic text-lg text-[#8b0000]">Naqal-baaz</div>
-                  <div className="text-sm opacity-80 leading-relaxed font-sans">The Plagiarist. You must sabotage the mission while remaining undetected.</div>
+                  <div className="font-black text-xs text-neon-purple uppercase tracking-widest mb-1">System Spy</div>
+                  <div className="text-[10px] text-white/40 leading-relaxed font-mono uppercase">Infiltrator unit. Objective: Corrupt data breach while maintaining signal stealth.</div>
                 </div>
                 <div className="group">
-                  <div className="font-bold italic text-lg text-[#8b0000]">Zabaan-bandi</div>
-                  <div className="text-sm opacity-80 leading-relaxed font-sans">The Silencing. The Plagiarists choose one poet to lose their vote each night.</div>
+                  <div className="font-black text-xs text-white uppercase tracking-widest mb-1">Signal Jam</div>
+                  <div className="text-[10px] text-white/40 leading-relaxed font-mono uppercase">Node lockout. System-Spies can deactivate one runner's vote during Dark-Sync.</div>
                 </div>
                 <div className="group">
-                  <div className="font-bold italic text-lg text-[#8b0000]">Majlis</div>
-                  <div className="text-sm opacity-80 leading-relaxed font-sans">The Grand Assembly. The time of debate, accusation, and banishment.</div>
+                  <div className="font-black text-xs text-neon-cyan uppercase tracking-widest mb-1">Breach Council</div>
+                  <div className="text-[10px] text-white/40 leading-relaxed font-mono uppercase">Mainframe Assembly. Protocol for debate, node flagging, and deactivation.</div>
                 </div>
               </div>
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-[10px] uppercase font-black tracking-widest opacity-50 border-l-2 border-[#d4af37] pl-2">Sultan's Protocols</h3>
-              <ul className="text-xs space-y-2 list-disc pl-4 opacity-80 font-sans">
-                <li>Verify the "Source of Truth" answer with the Speaker.</li>
-                <li>Ensure the Plagiarists remain silent during the Blindfold sessions.</li>
-                <li>In case of a tie, use the Pen of Fate or your own Decree.</li>
+              <h3 className="text-[10px] uppercase font-black tracking-widest text-neon-cyan/40 border-l-2 border-neon-cyan pl-2">System_Protocols</h3>
+              <ul className="text-[10px] space-y-3 list-none opacity-60 font-mono uppercase tracking-widest">
+                <li className="flex gap-2"><span className="text-neon-cyan">»</span> Verify "Source of Truth" hash with Data-Lead.</li>
+                <li className="flex gap-2"><span className="text-neon-cyan">»</span> Enforce silence during Dark-Sync protocols.</li>
+                <li className="flex gap-2"><span className="text-neon-cyan">»</span> Execute terminal purge via matrix randomness or Overlord decree.</li>
               </ul>
             </section>
           </div>
           
-          <div className="mt-8 pt-4 border-t border-[#2c1810]/10 text-center relative z-10">
-            <div className="text-[8px] uppercase font-bold opacity-30 mt-2">© Mehfil-e-Khaas • Protocol 1.0</div>
+          <div className="mt-8 pt-4 border-t border-white/10 text-center relative z-10">
+            <div className="text-[8px] uppercase font-black text-white/20 tracking-[0.4em]">© CYBER_SHADOWS • OVERLORD_OS_1.0</div>
           </div>
         </div>
       </div>
@@ -949,22 +948,24 @@ export default function HostDashboard() {
           {/* Active Mission Display */}
           {phase === 'mission' && activeMission && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-emerald-900/20 border border-emerald-500/30 p-6 rounded-3xl">
-                <h4 className="text-xs uppercase font-black text-emerald-500 mb-2 tracking-widest">Public: Read Aloud</h4>
-                <h3 className="text-2xl font-bold serif mb-2 text-white">{activeMission?.title ?? "Untitled Mission"}</h3>
-                <p className="text-emerald-100/70 italic">"{activeMission?.public_goal ?? ""}"</p>
+              <div className="bg-neon-cyan/5 border border-neon-cyan/20 p-6 rounded-xl font-mono">
+                <h4 className="text-[10px] uppercase font-black text-neon-cyan mb-2 tracking-[0.2em]">Public_Broadcast</h4>
+                <h3 className="text-xl font-black mb-2 text-white uppercase tracking-tight">{activeMission?.title ?? "Untitled Mission"}</h3>
+                <p className="text-white/60 text-xs italic">"{activeMission?.public_goal ?? ""}"</p>
               </div>
-              <div className="bg-red-900/20 border border-red-500/30 p-6 rounded-3xl">
-                <h4 className="text-xs uppercase font-black text-red-500 mb-2 tracking-widest">Classified: Classified</h4>
-                <p className="text-xl font-bold text-red-500 serif italic">"{activeMission?.secret_sabotage ?? ""}"</p>
+              <div className="bg-neon-purple/5 border border-neon-purple/20 p-6 rounded-xl font-mono">
+                <h4 className="text-[10px] uppercase font-black text-neon-purple mb-2 tracking-[0.2em]">Classified_Sabotage</h4>
+                <p className="text-sm font-black text-neon-purple italic">"{activeMission?.secret_sabotage ?? ""}"</p>
               </div>
               
               {/* THE SOURCE OF TRUTH CARD */}
-              <div className="md:col-span-2 bg-emerald-950/40 border-4 border-emerald-500 rounded-3xl p-8 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-1000">👑</div>
-                  <h4 className="text-xs uppercase font-black text-emerald-500 mb-4 tracking-[0.3em]">The Source of Truth: Answer Key</h4>
-                  <p className="text-3xl lg:text-4xl font-black text-white serif italic leading-tight">
-                      {activeMission?.host_answer_key || "No answer key provided for this mission."}
+              <div className="md:col-span-2 bg-neon-cyan/10 border-2 border-neon-cyan/40 rounded-xl p-8 relative overflow-hidden group scanline">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-1000">
+                    <Shield className="w-12 h-12 text-neon-cyan" />
+                  </div>
+                  <h4 className="text-[10px] uppercase font-black text-neon-cyan mb-4 tracking-[0.3em]">The Source of Truth: Answer Key</h4>
+                  <p className="text-4xl font-black text-white tracking-tighter leading-tight font-mono">
+                      {activeMission?.host_answer_key || "NO_DATA_SYNC"}
                   </p>
               </div>
 
@@ -973,24 +974,27 @@ export default function HostDashboard() {
                 <div className="md:col-span-2 py-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <button 
                         onClick={handleStartMission}
-                        className="w-full bg-gold hover:bg-gold-light text-crimson-black py-8 rounded-3xl text-3xl font-black uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(255,215,0,0.3)] border-4 border-white/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4"
+                        className="w-full bg-neon-cyan hover:bg-neon-cyan/90 text-black py-8 rounded-xl text-3xl font-black uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(0,243,255,0.2)] border-2 border-white/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4 font-mono"
                     >
-                        <span>🔱 Begin Mission</span>
-                        <span className="text-sm font-bold opacity-60">(Start Timer & Reveal Logic)</span>
+                        <span>⚡ BEGIN_BREACH</span>
+                        <span className="text-[10px] font-black opacity-60">(SYNC_TIMER + REVEAL)</span>
                     </button>
-                    <p className="text-center text-gold/40 text-[10px] uppercase font-black mt-6 tracking-widest">
-                        Clicking this will reveal the objective to all players and start the 2.5-minute countdown.
+                    <p className="text-center text-neon-cyan/40 text-[10px] uppercase font-black mt-6 tracking-widest font-mono">
+                        Protocol: Initiating objective broadcast and 2.5-min extraction countdown.
                     </p>
                 </div>
               )}
             </div>
           )}
 
-          <section className="glass p-6 rounded-3xl border border-white/10 h-full">
-            <div className="flex justify-between items-center mb-6 relative">
+          <section className="glass p-8 rounded-xl border border-white/10 h-full relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Users className="w-16 h-16 text-neon-cyan" />
+            </div>
+            <div className="flex justify-between items-center mb-8 relative">
               <Popover.Root open={showTooltips && !isMobile && tutorialStep === 2}>
                 <Popover.Trigger asChild>
-                  <h2 className="text-xl font-bold serif text-gold cursor-help">Gathered Poets ({players.length}/{gameState.min_players_required ?? 4})</h2>
+                  <h2 className="text-xl font-black font-mono text-neon-cyan uppercase tracking-tighter cursor-help">Synced_Nodes ({players.length}/{gameState.min_players_required ?? 4})</h2>
                 </Popover.Trigger>
                 <Popover.Portal>
                   <Popover.Content 
@@ -1002,51 +1006,56 @@ export default function HostDashboard() {
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="w-72 glass p-6 rounded-2xl border border-gold/30 shadow-2xl"
+                      className="w-72 glass p-6 rounded-xl border border-neon-cyan/30 shadow-2xl font-mono"
                     >
-                      <div className="text-[10px] font-black text-gold uppercase mb-1 tracking-widest flex justify-between">
+                      <div className="text-[10px] font-black text-neon-cyan uppercase mb-2 tracking-widest flex justify-between">
                         <span>Step 2: The Gathering</span>
                         <span>2/3</span>
                       </div>
-                      <h4 className="serif text-white font-bold mb-2">Assemble the Court</h4>
-                      <p className="text-xs text-white/70 leading-relaxed mb-4">Share the link above. Once we reach <strong>{gameState.min_players_required ?? 4} poets</strong>, the Sultan can start the session.</p>
+                      <h4 className="font-black text-white mb-2 uppercase text-[10px]">Assemble the Network</h4>
+                      <p className="text-[10px] text-white/50 leading-relaxed mb-4 uppercase">Share the link above. Once we reach <strong>{gameState.min_players_required ?? 4} nodes</strong>, the Overlord can initialize the session.</p>
                       <div className="flex justify-between items-center">
                         <button 
                           onClick={() => setTutorialStep(1)}
                           className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors"
                         >
-                          ← Back
+                          ← BACK
                         </button>
                         <button 
                           onClick={() => setTutorialStep(3)}
-                          className="text-[10px] font-black uppercase text-gold hover:text-white transition-colors"
+                          className="text-[10px] font-black uppercase text-neon-cyan hover:text-white transition-colors"
                         >
-                          Next Step →
+                          NEXT →
                         </button>
                       </div>
-                      <Popover.Arrow className="fill-gold/20" />
+                      <Popover.Arrow className="fill-neon-cyan/10" />
                     </motion.div>
                   </Popover.Content>
                 </Popover.Portal>
               </Popover.Root>
-              <div className="text-sm font-mono text-gold/60">POT: ₹{gameState.eidi_pot}</div>
+              <div className="text-[10px] font-black font-mono text-neon-cyan/60 tracking-widest uppercase">Vault: C{gameState.eidi_pot}</div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
               {players.map(p => (
-                <div key={p.id} className={`p-4 rounded-xl border transition-all ${
-                  p.status === 'alive' ? 'bg-white/5 border-white/10' : 'bg-black/40 border-white/5 grayscale opacity-50'
+                <div key={p.id} className={`p-2 rounded border transition-all font-mono ${
+                  p.status === 'alive' ? 'bg-black/40 border-white/10' : 'bg-white/5 border-white/5 grayscale opacity-30 scale-95'
                 }`}>
                   <div className="flex justify-between items-center">
-                    <div>
-                        <div className="font-bold serif flex items-center gap-2">
-                          {p.name}
+                    <div className="w-full">
+                        <div className="font-black flex justify-between items-center mb-1">
+                          <span className={`${p.status === 'alive' ? 'text-white' : 'text-white/40'} uppercase tracking-tight`}>{p.name}</span>
                           {p.name === hostName && (
-                            <span className="text-[8px] bg-gold/20 text-gold px-1.5 py-0.5 rounded-full font-black uppercase tracking-widest border border-gold/20">Host</span>
+                            <span className="text-[8px] bg-neon-cyan/20 text-neon-cyan px-2 py-0.5 rounded border border-neon-cyan/20 font-black uppercase tracking-widest">HLD</span>
                           )}
                         </div>
-                        <div className="text-[10px] uppercase text-gray-500">
-                            {p.role} • {p.status}
+                        <div className="flex justify-between items-center">
+                          <div className={`text-[8px] uppercase font-black tracking-widest ${p.role === 'sukhan_war' ? 'text-neon-cyan/60' : 'text-neon-purple/80'}`}>
+                              {p.role === 'sukhan_war' ? 'GLITCH-RUNNER' : 'SYSTEM-SPY'}
+                          </div>
+                          <div className="text-[8px] uppercase text-white/20 font-black tracking-widest">
+                              {p.status}
+                          </div>
                         </div>
                     </div>
                   </div>
@@ -1056,20 +1065,20 @@ export default function HostDashboard() {
 
             {/* Voting Chart */}
             {phase === 'majlis' && (
-                <div className="mt-8 pt-8 border-t border-white/10">
-                    <h3 className="text-xs uppercase font-bold text-gray-500 mb-4 tracking-widest">Real-time Vote Tally ({votes.length}/{alivePlayers.length})</h3>
-                    <div className="space-y-3">
+                <div className="mt-8 pt-8 border-t border-white/10 font-mono">
+                    <h3 className="text-[10px] uppercase font-black text-white/30 mb-6 tracking-widest">Matrix_Vote_Tally ({votes.length}/{alivePlayers.length})</h3>
+                    <div className="space-y-4">
                         {alivePlayers.map(p => {
                             const count = voteTallies[p.id] || 0;
                             const percentage = (count / (alivePlayers.length || 1)) * 100;
                             return (
-                                <div key={p.id} className="space-y-1">
-                                    <div className="flex justify-between text-[10px] uppercase font-bold">
-                                        <span>{p.name}</span>
-                                        <span>{count} Votes</span>
+                                <div key={p.id} className="space-y-2">
+                                    <div className="flex justify-between text-[10px] uppercase font-black tracking-tight">
+                                        <span className="text-white/60">{p.name}</span>
+                                        <span className="text-neon-cyan">{count} PACKETS</span>
                                     </div>
-                                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-gold transition-all duration-500" style={{ width: `${percentage}%` }} />
+                                    <div className="h-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                        <div className="h-full bg-neon-cyan shadow-[0_0_10px_rgba(0,243,255,0.5)] transition-all duration-500" style={{ width: `${percentage}%` }} />
                                     </div>
                                 </div>
                             );
@@ -1082,62 +1091,65 @@ export default function HostDashboard() {
 
         {/* 3. THE CONTROL PANEL */}
         <div className="space-y-6">
-          <section className="glass p-6 rounded-3xl border border-gold/20 bg-gold/5 flex flex-col h-full relative z-10">
-            <h2 className="text-xl font-bold serif text-gold mb-6">Execution Panel</h2>
+          <section className="glass p-8 rounded-xl border border-neon-cyan/20 bg-neon-cyan/5 flex flex-col h-full relative z-10 scanline">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <Zap className="w-12 h-12 text-neon-cyan" />
+            </div>
+            <h2 className="text-sm font-black font-mono text-neon-cyan mb-8 uppercase tracking-[0.3em]">Execution_Matrix</h2>
             
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 space-y-4 font-mono">
               {phase === 'lobby' && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-4">
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center mb-6">
                     {process.env.NODE_ENV === 'development' && (
                       <button 
                         onClick={() => setShowDevSettings(!showDevSettings)}
-                        className="text-[10px] uppercase font-black text-gold/60 hover:text-gold transition-all flex items-center gap-2"
+                        className="text-[10px] uppercase font-black text-neon-cyan/60 hover:text-neon-cyan transition-all flex items-center gap-2"
                       >
-                        {showDevSettings ? 'Hide Settings' : '⚙️ Dev Settings'}
+                        {showDevSettings ? 'HIDE_CONFIG' : '⚙️ DEV_CONFIG'}
                       </button>
                     )}
                     {gameState?.is_dev_mode && (
-                      <span className="text-[10px] bg-red-600/20 text-red-500 px-2 py-0.5 rounded-full font-black uppercase tracking-widest border border-red-500/20">Dev Mode Active</span>
+                      <span className="text-[10px] bg-neon-purple/20 text-neon-purple px-2 py-0.5 rounded-full font-black uppercase tracking-widest border border-neon-purple/20">Dev_Matrix_Active</span>
                     )}
                   </div>
 
                   {showDevSettings && (
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4 animate-fade-enter-active mb-6">
+                    <div className="p-6 bg-black/40 rounded-xl border border-white/10 space-y-6 animate-fade-enter-active mb-6">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-gray-400">Enable Dev Mode</span>
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Enable_Dev_Matrix</span>
                         <input 
                           type="checkbox" 
                           checked={gameState?.is_dev_mode || false}
                           onChange={(e) => toggleDevMode(e.target.checked)}
-                          className="w-5 h-5 accent-emerald-500"
+                          className="w-5 h-5 accent-neon-cyan"
                         />
                       </div>
 
                       {gameState?.is_dev_mode && (
                         <>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[10px] font-black uppercase">
-                              <span>Min Players to Start</span>
-                              <span>{gameState.min_players_required}</span>
+                          <div className="space-y-3">
+                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                              <span className="text-white/40">Min_Nodes</span>
+                              <span className="text-neon-cyan">{gameState.min_players_required}</span>
                             </div>
                             <input 
                               type="range" min="1" max="12" 
                               value={gameState.min_players_required}
                               onChange={(e) => updateMinPlayers(parseInt(e.target.value))}
-                              className="w-full accent-gold"
+                              className="w-full accent-neon-cyan h-1 bg-white/5 rounded-full appearance-none"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[10px] font-black uppercase">
-                              <span>Plagiarist Count</span>
-                              <span>{devPlagiaristCount}</span>
+                          <div className="space-y-3">
+                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                              <span className="text-white/40">Spy_Infiltration</span>
+                              <span className="text-neon-purple">{devPlagiaristCount}</span>
                             </div>
                             <input 
                               type="range" min="1" max={Math.max(1, players.length - 1)} 
                               value={devPlagiaristCount}
                               onChange={(e) => setDevPlagiaristCount(parseInt(e.target.value))}
-                              className="w-full accent-red-500"
+                              className="w-full accent-neon-purple h-1 bg-white/5 rounded-full appearance-none"
                             />
                           </div>
                         </>
@@ -1149,13 +1161,15 @@ export default function HostDashboard() {
                     <button 
                       onClick={handleAssignRoles}
                       disabled={isAssigning || players.length < (gameState?.min_players_required ?? (gameState?.is_dev_mode ? 1 : 4))}
-                      className={`btn-premium w-full bg-emerald-600 py-6 rounded-2xl shadow-2xl border-emerald-500/50 text-lg active:scale-95 transition-all ${isAssigning ? 'opacity-50 cursor-not-allowed' : ''} ${showTooltips && tutorialStep === 3 && players.length >= (gameState?.min_players_required ?? 4) ? 'animate-pulse-gold' : ''}`}
+                      className={`btn-premium w-full bg-neon-cyan text-black py-6 rounded-xl shadow-xl shadow-neon-cyan/20 text-xs font-black uppercase tracking-[0.3em] active:scale-95 transition-all ${isAssigning ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {isAssigning ? 'Assigning Roles...' : 'Assign Roles & Start'}
+                      {isAssigning ? 'SYNCING_NODES...' : 'INITIALIZE_NODES'}
                     </button>
                   </div>
                   {players.length < (gameState?.min_players_required ?? 4) && !gameState?.is_dev_mode && (
-                    <p className="text-center text-red-500 text-[10px] uppercase font-black tracking-widest mt-4 animate-pulse">Minimum {gameState?.min_players_required ?? 4} players required to start the Mehfil.</p>
+                    <p className="text-center text-neon-purple text-[8px] uppercase font-black tracking-widest mt-6 animate-pulse leading-relaxed">
+                      Initialization Error: Insufficient nodes detected ({players.length}/{gameState?.min_players_required ?? 4})
+                    </p>
                   )}
                 </div>
               )}
@@ -1164,108 +1178,114 @@ export default function HostDashboard() {
                 <button 
                     onClick={() => handleTransition('mission')}
                     disabled={gameState.current_mission_id !== null}
-                    className={`btn-premium w-full bg-gold text-crimson-black py-6 rounded-2xl border-gold/50 text-lg ${gameState.current_mission_id ? 'opacity-20 grayscale' : ''}`}
+                    className={`btn-premium w-full bg-neon-cyan text-black py-6 rounded-xl shadow-xl shadow-neon-cyan/20 text-xs font-black uppercase tracking-[0.3em] ${gameState.current_mission_id ? 'opacity-20 grayscale' : ''}`}
                 >
-                    {gameState.current_mission_id ? 'Mission in Progress...' : 'Begin First Mission'}
+                    {gameState.current_mission_id ? 'SYNCING_MISSION_DATA...' : 'INITIATE_FIRST_MISSION'}
                 </button>
               )}
 
               {phase === 'mission' && (
                 <div className="space-y-4">
-                    <div className="bg-black/40 p-6 rounded-2xl border border-white/10 text-center mb-4">
-                        <div className="text-[10px] uppercase font-black text-gold/40 tracking-widest mb-1">Time Remaining</div>
-                        <div className={`text-5xl font-black serif tabular-nums ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                    <div className="bg-black/40 p-6 rounded-xl border border-white/5 text-center mb-6 shadow-inner">
+                        <div className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] mb-2">Time_Remaining</div>
+                        <div className={`text-5xl font-black tabular-nums tracking-tighter ${timeLeft <= 20 ? 'text-neon-purple animate-pulse' : 'text-white'}`}>
                             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                         </div>
                     </div>
-                    <button 
-                        onClick={handleMissionSuccess} 
-                        disabled={timeLeft > 90 || !!missionOutcome}
-                        className="btn-premium w-full bg-emerald-900/50 text-emerald-400 border-emerald-500/30 py-5 rounded-2xl disabled:opacity-20"
-                    >
-                        Success: Answer Matches ({gameState?.sabotage_triggered ? '+₹1000 Taxed' : '+₹2000'})
-                    </button>
                     
-                    <button 
-                        onClick={handleMissionFailure} 
-                        disabled={timeLeft > 0 || !!missionOutcome}
-                        className="btn-premium w-full bg-red-900/50 text-red-400 border-red-500/30 py-5 rounded-2xl disabled:opacity-20"
-                    >
-                        {timeLeft > 0 ? `Solving Phase Active...` : `Failed: Incorrect or Time Out`}
-                    </button>
-                    
-                    <button 
-                      onClick={handleVerifySabotage}
-                      disabled={!canVerifySabotage || isVerifying || isSabotageVerified}
-                      className="btn-premium w-full bg-red-600/20 text-red-500 border-red-600/40 py-4 rounded-2xl disabled:opacity-20"
-                    >
-                      {gameState?.sabotage_used ? "Sabotage Verified" : `Verify Sabotage (${currentSignals}/${alivePlagiarists.length})`}
-                    </button>
+                    <div className="grid grid-cols-1 gap-2">
+                        <button 
+                            onClick={handleMissionSuccess} 
+                            disabled={timeLeft > 90 || !!missionOutcome}
+                            className="btn-premium w-full bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:bg-neon-cyan hover:text-black transition-all"
+                        >
+                            DATA_RECOVERED ({gameState?.sabotage_triggered ? 'C1000 TAXED' : 'C2000'})
+                        </button>
+                        
+                        <button 
+                            onClick={handleMissionFailure} 
+                            disabled={timeLeft > 0 || !!missionOutcome}
+                            className="btn-premium w-full bg-neon-purple/10 text-neon-purple border border-neon-purple/30 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:bg-neon-purple hover:text-white transition-all"
+                        >
+                            {timeLeft > 0 ? `SYNCING_PHASE_ACTIVE...` : `BREACH_FAILED: PARSE_ERROR`}
+                        </button>
+                        
+                        <button 
+                          onClick={handleVerifySabotage}
+                          disabled={!canVerifySabotage || isVerifying || isSabotageVerified}
+                          className="btn-premium w-full bg-neon-purple/20 text-neon-purple border border-neon-purple/40 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20 flex items-center justify-center gap-2"
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          {gameState?.sabotage_used ? "BREACH_SIGNAL_CONFIRMED" : `VERIFY_SYSTEM_BREACH (${currentSignals}/${alivePlagiarists.length})`}
+                        </button>
+                    </div>
 
                     <button 
                         onClick={() => handleTransition('majlis')}
                         disabled={!missionOutcome && !potentialWinner}
-                        className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
+                        className="btn-premium w-full bg-white text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] mt-6 shadow-xl"
                     >
-                        {potentialWinner ? 'Reveal Scores (Victory!)' : 'Proceed to Majlis'}
+                        {potentialWinner ? 'SYSTEM_HALT: TERMINATE_OPERATION' : 'INITIATE_BREACH_COUNCIL'}
                     </button>
                 </div>
               )}
 
               {phase === 'majlis' && (
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {alivePlayers.length > 2 && (
                         <button 
                             onClick={() => setIsVotesLocked(true)}
                             disabled={votes.length < alivePlayers.length || isVotesLocked}
-                            className="btn-premium w-full bg-gold/20 text-gold border-gold/40 py-5 rounded-2xl"
+                            className={`btn-premium w-full py-5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                              isVotesLocked ? 'bg-white/5 text-white/20 border border-white/10' : 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan'
+                            }`}
                         >
-                            {isVotesLocked ? "Votes Locked" : "Lock Votes & Reveal"}
+                            {isVotesLocked ? "MATRIX_LOCKED" : "LOCK_MATRIX_SYNC"}
                         </button>
                     )}
                     
-                    {isVotesLocked && !isTie && gameState?.tie_protocol === 'none' && !isBanishmentConfirmed && (
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
-                            <p className="text-[10px] text-center text-gray-500 uppercase font-black tracking-widest">Select Player to Banish</p>
+                    {isVotesLocked && !isTie && gameState?.tie_protocol === 'none' && !isTerminationConfirmed && (
+                        <div className="p-6 bg-black/40 rounded-xl border border-white/5 space-y-4">
+                            <p className="text-[10px] text-center text-white/40 uppercase font-black tracking-[0.2em] mb-4">Target identified. Execute termination?</p>
                             {mostVotedPlayers.map(p => (
-                                <button key={p.id} onClick={() => setBanishedPlayerId(p.id)} className={`btn-premium w-full py-4 rounded-xl border ${banishedPlayerId === p.id ? 'bg-red-600 border-red-400' : 'bg-white/5 border-white/10'}`}>
-                                    Banish {p.name}
+                                <button key={p.id} onClick={() => setDeactivatedNodeId(p.id)} className={`btn-premium w-full py-4 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${deactivatedNodeId === p.id ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                                    DEACTIVATE_NODE: {p.name}
                                 </button>
                             ))}
                             <button 
                                 onClick={() => handleBanish()}
-                                disabled={!banishedPlayerId}
-                                className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500 disabled:opacity-20"
+                                disabled={!deactivatedNodeId}
+                                className="btn-premium w-full bg-neon-purple text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-neon-purple/20 disabled:opacity-20 mt-6"
                             >
-                                Confirm Banishment
+                                CONFIRM_PURGE
                             </button>
                         </div>
                     )}
 
                     {isTie && (
-                        <div className="p-6 bg-gold/10 rounded-3xl border-2 border-gold/40 animate-scale-up space-y-6">
+                        <div className="p-8 bg-neon-cyan/5 rounded-xl border border-neon-cyan/20 animate-scale-up space-y-8">
                             <div className="text-center">
-                                <h3 className="text-gold font-black uppercase tracking-[0.2em] text-xs mb-2">Tie Detected!</h3>
-                                <p className="text-white/60 text-[10px] italic">Choose the Law of the Land</p>
+                                <h3 className="text-neon-cyan font-black uppercase tracking-[0.4em] text-[10px] mb-2">Tie_Detected_In_Matrix</h3>
+                                <p className="text-white/20 text-[8px] uppercase tracking-widest">Awaiting Overlord Protocol Selection</p>
                             </div>
-                            <div className="grid grid-cols-1 gap-3">
-                                <button onClick={() => handleTieProtocolSelect('decree')} className="btn-premium w-full bg-gold text-black py-4 rounded-xl font-bold">🔱 Sultan's Decree</button>
+                            <div className="grid grid-cols-1 gap-2">
+                                <button onClick={() => handleTieProtocolSelect('decree')} className="btn-premium w-full bg-neon-cyan text-black py-4 rounded-xl text-[10px] font-black uppercase tracking-widest">🔱 OVERLORD_PROTOCOL</button>
                                 {alivePlayers.length > 2 && (
-                                    <button onClick={() => handleTieProtocolSelect('revote')} className="btn-premium w-full bg-white/10 text-gold border-gold/40 py-4 rounded-xl font-bold">🗳️ The Re-Vote</button>
+                                    <button onClick={() => handleTieProtocolSelect('revote')} className="btn-premium w-full bg-white/5 text-neon-cyan border border-neon-cyan/40 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest">🗳️ MATRIX_RE-SYNC</button>
                                 )}
-                                <button onClick={() => handleTieProtocolSelect('spin')} className="btn-premium w-full bg-red-950/40 text-red-500 border-red-900/50 py-4 rounded-xl font-bold">✒️ Spin the Pen</button>
+                                <button onClick={() => handleTieProtocolSelect('spin')} className="btn-premium w-full bg-neon-purple/20 text-neon-purple border border-neon-purple/40 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest">⚡ NEURAL_OVERRIDE</button>
                             </div>
                         </div>
                     )}
 
                     {gameState?.tie_protocol === 'decree' && (
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
-                            <p className="text-[10px] text-center text-gold uppercase font-black tracking-widest animate-pulse">Establishing the Decree...</p>
+                        <div className="p-6 bg-black/40 rounded-xl border border-white/5 space-y-3">
+                            <p className="text-[8px] text-center text-neon-cyan uppercase font-black tracking-[0.3em] animate-pulse mb-4">Command Override Active...</p>
                             {gameState.tied_player_ids?.map(id => {
                                 const player = players.find(p => p.id === id);
                                 return (
-                                    <button key={id} onClick={() => handleBanish(id)} className="btn-premium w-full bg-red-600/20 border-red-500/40 text-red-500 py-4 rounded-xl font-bold">
-                                        Banish {player?.name}
+                                    <button key={id} onClick={() => handleBanish(id)} className="btn-premium w-full bg-neon-purple/10 border border-neon-purple/40 text-neon-purple py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all">
+                                        DEACTIVATE {player?.name}
                                     </button>
                                 );
                             })}
@@ -1273,92 +1293,92 @@ export default function HostDashboard() {
                     )}
 
                     {gameState?.tie_protocol === 'spin' && (
-                         <div className="p-6 bg-red-950/40 rounded-3xl border-2 border-red-900 animate-pulse text-center space-y-6">
-                            <h3 className="text-red-500 font-black uppercase tracking-widest text-xs">Pen of Fate</h3>
+                         <div className="p-10 bg-black/40 rounded-xl border border-neon-purple/20 animate-pulse text-center space-y-8">
+                            <h3 className="text-neon-purple font-black uppercase tracking-[0.3em] text-[10px]">Matrix_Randomizer</h3>
                             <button 
-                                onClick={handleSpinThePen} 
+                                onClick={handleNeuralOverride} 
                                 disabled={isSpinning}
-                                className={`w-24 h-24 rounded-full border-4 flex items-center justify-center text-4xl mx-auto transition-all ${isSpinning ? 'animate-spin border-red-500' : 'border-red-900 bg-red-600/20'}`}
+                                className={`w-24 h-24 rounded-full border-2 flex items-center justify-center text-4xl mx-auto transition-all shadow-[0_0_50px_rgba(188,19,254,0.1)] ${isSpinning ? 'animate-spin border-neon-purple' : 'border-neon-purple/20 bg-neon-purple/10'}`}
                             >
-                                ✒️
+                                ⚡
                             </button>
-                            <p className="text-red-100/60 text-[10px] uppercase font-black">{isSpinning ? 'The spin has begun...' : 'Click to Spin!'}</p>
+                            <p className="text-neon-purple/40 text-[8px] uppercase font-black tracking-widest">{isSpinning ? 'SCANNING_MATRIX...' : 'INITIATE_DECRYPTION_JUMP'}</p>
                          </div>
                     )}
 
                     {gameState?.tie_protocol === 'revote' && (
-                        <div className="p-6 bg-emerald-950/40 rounded-3xl border-2 border-emerald-500/40 text-center space-y-3">
-                            <h3 className="text-emerald-500 font-black uppercase tracking-widest text-xs animate-pulse">
-                                {isVotesLocked ? "Re-Vote Results" : "Re-Vote in Progress"}
+                        <div className="p-8 bg-black/40 rounded-xl border border-neon-cyan/20 text-center space-y-6">
+                            <h3 className="text-neon-cyan font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
+                                {isVotesLocked ? "RE-SYNC_RESULTS" : "RE-SYNC_IN_PROGRESS"}
                             </h3>
-                            <p className="text-white/40 text-[10px]">Tied: {gameState.tied_player_ids?.map(id => players.find(p => p.id === id)?.name).join(' vs ')}</p>
+                            <p className="text-[10px] font-black text-white/30 tracking-widest uppercase mb-4">Conflict: {gameState.tied_player_ids?.map(id => players.find(p => p.id === id)?.name).join(' vs ')}</p>
                             
                             {!isVotesLocked ? (
                                 <>
-                                    <div className="text-2xl font-black tabular-nums">{votes.length} / {alivePlayers.length}</div>
+                                    <div className="text-4xl font-black tabular-nums tracking-tighter text-neon-cyan">{votes.length} / {alivePlayers.length}</div>
                                     <button 
                                         onClick={() => setIsVotesLocked(true)}
                                         disabled={votes.length < alivePlayers.length || isVotesLocked}
-                                        className="btn-premium w-full bg-emerald-600 py-4 rounded-xl text-sm"
+                                        className="btn-premium w-full bg-neon-cyan text-black py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-neon-cyan/20 mt-6"
                                     >
-                                        Lock Re-Votes
+                                        LOCK_RE-SYNC
                                     </button>
                                 </>
                             ) : (
-                                <div className="space-y-3 pt-4 border-t border-white/10">
-                                    <p className="text-[10px] text-center text-gray-500 uppercase font-black tracking-widest">Select Player to Banish</p>
+                                <div className="space-y-4 pt-6 border-t border-white/5">
+                                    <p className="text-[8px] text-center text-white/30 uppercase font-black tracking-widest mb-4">Manual deactivation required</p>
                                     {mostVotedPlayers.map(p => (
-                                        <button key={p.id} onClick={() => setBanishedPlayerId(p.id)} className={`btn-premium w-full py-4 rounded-xl border ${banishedPlayerId === p.id ? 'bg-red-600 border-red-400' : 'bg-white/5 border-white/10'}`}>
-                                            Banish {p.name} ({votes.filter(v => v.target_id === p.id).length} votes)
+                                        <button key={p.id} onClick={() => setDeactivatedNodeId(p.id)} className={`btn-premium w-full py-4 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${deactivatedNodeId === p.id ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                                            DEACTIVATE {p.name} ({votes.filter(v => v.target_id === p.id).length} PACKETS)
                                         </button>
                                     ))}
                                     <button 
                                         onClick={() => handleBanish()}
-                                        disabled={!banishedPlayerId || isBanishmentConfirmed}
-                                        className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500 disabled:opacity-20"
+                                        disabled={!deactivatedNodeId || isTerminationConfirmed}
+                                        className="btn-premium w-full bg-neon-purple text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-neon-purple/20 disabled:opacity-20 mt-6"
                                     >
-                                        Confirm Banishment
+                                        CONFIRM_PURGE
                                     </button>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {isBanishmentConfirmed && (
-                        <div className="p-4 bg-red-600/10 rounded-2xl border border-red-500/40 text-center animate-pulse">
-                            <p className="text-red-500 font-bold uppercase tracking-widest text-xs">Banishment Executed</p>
-                            <p className="text-[10px] text-white/40 italic">The word has been struck from the books.</p>
+                    {isTerminationConfirmed && (
+                        <div className="p-6 bg-neon-purple/10 rounded-xl border border-neon-purple/40 text-center animate-pulse">
+                            <p className="text-neon-purple font-black uppercase tracking-[0.3em] text-[10px] mb-2">Node_Disconnected</p>
+                            <p className="text-[8px] text-white/20 uppercase font-black tracking-widest leading-relaxed">Identity scrubbed from active directory clusters.</p>
                         </div>
                     )}
 
                     <button 
                         onClick={() => potentialWinner ? handleTransition('end') : handleTransition('night')}
-                        disabled={!isBanishmentConfirmed && !potentialWinner} 
-                        className="btn-premium w-full bg-white text-black py-6 rounded-2xl border-gray-300 mt-4 text-lg"
+                        disabled={!isTerminationConfirmed && !potentialWinner} 
+                        className="btn-premium w-full bg-white text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] mt-8 shadow-xl"
                     >
-                        {potentialWinner ? 'Reveal Scores (Victory!)' : 'Proceed to Night'}
+                        {potentialWinner ? 'SYSTEM_HALT: REVEAL_RESULTS' : 'INITIATE_BLACKOUT_SYNC'}
                     </button>
                 </div>
               )}
 
               {phase === 'night' && (
-                <div className="space-y-4">
-                    <div className="bg-black/40 p-6 rounded-2xl border border-white/10">
-                        <h3 className="text-xs uppercase font-bold text-gray-500 mb-4 tracking-widest text-center">{alivePlagiarists.length > 1 ? "Plagiarist Coordination" : "Plagiarist Selection"}</h3>
-                        <div className="space-y-3">
+                <div className="space-y-6">
+                    <div className="bg-black/40 p-6 rounded-xl border border-white/5">
+                        <h3 className="text-[10px] uppercase font-black text-white/30 mb-8 tracking-[0.3em] text-center">{alivePlagiarists.length > 1 ? "SPY_COORDINATION_MATRIX" : "SPY_TARGET_SELECTION"}</h3>
+                        <div className="space-y-4">
                             {alivePoets.map(p => {
                                 const count = nightVoteTallies[p.id] || 0;
                                 const isConsensus = activeNightTargetId === p.id;
                                 const percentage = (count / (alivePlagiarists.length || 1)) * 100;
                                 
                                 return (
-                                    <div key={p.id} className="space-y-1">
-                                        <div className="flex justify-between text-[10px] uppercase font-bold">
-                                            <span className={isConsensus ? 'text-red-500' : ''}>{p.name} {isConsensus && '🎯'}</span>
-                                            <span>{count} Votes</span>
+                                    <div key={p.id} className="space-y-2">
+                                        <div className="flex justify-between text-[10px] uppercase font-black font-mono">
+                                            <span className={isConsensus ? 'text-neon-purple' : 'text-white/40'}>{p.name} {isConsensus && '🎯'}</span>
+                                            <span className="text-white/20">{count} PACKETS</span>
                                         </div>
-                                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                            <div className={`h-full transition-all duration-500 ${isConsensus ? 'bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]' : 'bg-gray-600'}`} style={{ width: `${percentage}%` }} />
+                                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-1000 ${isConsensus ? 'bg-neon-purple shadow-[0_0_10px_rgba(188,19,254,0.5)]' : 'bg-white/10'}`} style={{ width: `${percentage}%` }} />
                                         </div>
                                     </div>
                                 );
@@ -1367,9 +1387,9 @@ export default function HostDashboard() {
                     </div>
 
                     {!silenceConfirmed ? (
-                        <div className="space-y-3">
-                             <p className="text-[10px] text-center text-red-500/60 uppercase font-black tracking-widest animate-pulse">
-                                {nightConsensusPlayers.length > 1 ? "Tie detected! Choose between the tied suspects." : "Waiting for Consensus..."}
+                        <div className="space-y-4">
+                             <p className="text-[8px] text-center text-neon-purple/60 uppercase font-black tracking-[0.4em] animate-pulse">
+                                {nightConsensusPlayers.length > 1 ? "CONFLICT_DETECTED: MANUAL_OVERRIDE_REQUIRED" : "WAITING_FOR_SPY_CONSENSUS..."}
                              </p>
                              
                              <div className="grid grid-cols-1 gap-2">
@@ -1377,33 +1397,33 @@ export default function HostDashboard() {
                                     <button 
                                         key={p.id}
                                         onClick={() => handleSilence(p.id)}
-                                        className="btn-premium w-full bg-red-600 py-4 rounded-xl border-red-500 text-sm font-bold uppercase tracking-widest"
+                                        className="btn-premium w-full bg-neon-purple text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-neon-purple/10"
                                     >
-                                        Silence {p.name}
+                                        DISCONNECT_NODE: {p.name}
                                     </button>
                                 ))}
                              </div>
                         </div>
                     ) : (
-                        <div className="space-y-4 animate-scale-up">
-                            <div className="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl text-center">
-                                <p className="text-[10px] uppercase text-emerald-500 font-black tracking-widest">Silence Executed</p>
+                        <div className="space-y-6 animate-scale-up">
+                            <div className="p-6 bg-neon-cyan/10 border border-neon-cyan/20 rounded-xl text-center">
+                                <p className="text-[10px] uppercase text-neon-cyan font-black tracking-[0.3em]">SIGNAL_JAM_EXECUTED</p>
                             </div>
                             
                             <button 
                                 onClick={() => potentialWinner ? handleTransition('end') : handleWakeUpReveal(nightVotes[0]?.target_id || null)}
                                 disabled={gameState.is_revealing && !potentialWinner}
-                                className="btn-premium w-full bg-gold text-black py-6 rounded-2xl border-gold/50 text-lg font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(255,215,0,0.2)] active:scale-95 transition-all"
+                                className="btn-premium w-full bg-neon-cyan text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] shadow-xl shadow-neon-cyan/20 active:scale-95 transition-all"
                             >
-                                {potentialWinner ? "Reveal Scores (Victory!)" : gameState.is_revealing ? "Reveal in Progress..." : "Wake Up & Reveal"}
+                                {potentialWinner ? "SYSTEM_HALT: REVEAL_RESULTS" : gameState.is_revealing ? "SYNCING_REVEAL..." : "WAKE_UP_&_REVEAL"}
                             </button>
 
                             {gameState.is_revealing && (
                                 <button 
                                     onClick={() => handleTransition(potentialWinner ? 'end' : 'mission')}
-                                    className="btn-premium w-full bg-white text-black py-4 rounded-xl border-gray-300 animate-fade-enter-active"
+                                    className="btn-premium w-full bg-white/5 border border-white/10 text-white/60 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest mt-4 hover:bg-white/10 transition-all font-mono"
                                 >
-                                    {potentialWinner ? "End Game & Reveal Scores" : "Dismiss Reveal & Next Mission"}
+                                    {potentialWinner ? "HALT_REVEAL_&_PAYOUT" : "DISMISS_REVEAL_&_NEXT_BREACH"}
                                 </button>
                             )}
                         </div>
@@ -1411,91 +1431,90 @@ export default function HostDashboard() {
                 </div>
               )}
 
-              
               {phase === 'payout' && (
-                <div className="space-y-6">
-                    <div className="p-8 bg-emerald-900/40 rounded-3xl border-4 border-emerald-400/30 text-center mb-6 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse" />
-                        <h2 className="text-6xl font-black serif text-white uppercase tracking-tighter italic mb-2">Final Gathering Payout</h2>
-                        <p className="text-emerald-400/60 uppercase text-xs font-black tracking-[0.3em]">The Mehfil concludes and the Sultan rewards his poets</p>
+                <div className="space-y-8">
+                    <div className="p-8 bg-black/40 rounded-xl border border-neon-cyan/20 text-center mb-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-neon-cyan to-transparent animate-pulse" />
+                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-4">FINAL_VAULT_PAYOUT</h2>
+                        <p className="text-neon-cyan/40 uppercase text-[10px] font-black tracking-[0.4em]">Breach concluded. Overlord rewards dispensed.</p>
                         
-                        <div className="mt-10 space-y-3">
+                        <div className="mt-12 space-y-4">
                             {players.sort((a, b) => (b.gathering_gold || 0) - (a.gathering_gold || 0)).map((p, idx) => (
-                                <div key={p.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-white/20 transition-all">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-emerald-400 font-black text-xl w-8">#{idx + 1}</span>
-                                        <span className="text-white font-bold text-lg">{p.name} {p.status === 'banished' ? '👻' : ''}</span>
+                                <div key={p.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/5 hover:border-neon-cyan/20 transition-all font-mono">
+                                    <div className="flex items-center gap-6">
+                                        <span className="text-neon-cyan font-black text-xl w-8">#{idx + 1}</span>
+                                        <div className="flex flex-col items-start">
+                                          <span className="text-white font-black text-base tracking-tight">{p.name} {p.status === 'banished' ? '⚠️' : ''}</span>
+                                          <span className="text-[8px] text-white/30 uppercase font-black tracking-widest">{p.role === 'sukhan_war' ? 'GLITCH-RUNNER' : 'SYSTEM-SPY'}</span>
+                                        </div>
                                     </div>
-                                    <div className="text-gold font-mono text-2xl font-black">₹{p.gathering_gold || 0}</div>
+                                    <div className="text-neon-cyan font-black text-xl">C{p.gathering_gold || 0}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <button 
-                        onClick={handleResetGame}
-                        className="btn-premium w-full bg-emerald-600 py-6 rounded-2xl border-emerald-500 shadow-xl text-xl font-black uppercase tracking-[0.2em]"
-                    >
-                        Start New Game in Room
-                    </button>
-                    <button 
-                        onClick={() => router.push('/')} 
-                        className="btn-premium w-full bg-white/10 text-white/40 py-4 rounded-xl border-white/10 text-sm font-black uppercase tracking-[0.2em]"
-                    >
-                        Exit to Main Menu
-                    </button>
-                    <button 
-                        onClick={async () => {
-                          await deleteRoom(roomId!);
-                          router.push('/');
-                        }}
-                        className="w-full text-white/20 text-[10px] uppercase font-bold tracking-widest mt-4 hover:text-red-500 transition-colors"
-                    >
-                        Destroy Room & Exit
-                    </button>
+                    <div className="grid grid-cols-1 gap-2">
+                        <button 
+                            onClick={handleResetGame}
+                            className="btn-premium w-full bg-neon-cyan text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] shadow-xl"
+                        >
+                            INITIATE_NEW_PROTOCOL
+                        </button>
+                        <button 
+                            onClick={() => router.push('/')} 
+                            className="btn-premium w-full bg-white/5 text-white/40 py-4 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all font-mono"
+                        >
+                            EXIT_SYSTEM
+                        </button>
+                    </div>
                 </div>
               )}
 
               {phase === 'end' && (
-                <div className="space-y-4">
-                    <div className="p-8 bg-gold/20 rounded-3xl border-4 border-gold/40 text-center mb-6 shadow-2xl space-y-6">
-                        <div className="space-y-2">
-                             <h2 className="text-7xl font-black serif text-gold uppercase tracking-tighter italic drop-shadow-2xl">
-                                {gameState.winner_faction === 'poets' ? 'The Sukhan-war (Poets) prevail!' : 
-                                 gameState.winner_faction === 'plagiarists' ? 'The Naqal-baaz (Plagiarists) rule the City!' : 'The Mehfil Concludes'}
+                <div className="space-y-8">
+                    <div className="p-10 bg-black/60 rounded-xl border-2 border-neon-cyan shadow-shadow-neon-cyan/20 text-center mb-8 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-neon-cyan/5 animate-pulse" />
+                        <div className="relative z-10 space-y-8">
+                             <h2 className="text-5xl font-black text-white uppercase tracking-tighter leading-tight">
+                                {gameState.winner_faction === 'poets' ? 'GLITCH-RUNNERS_PREVAIL' : 
+                                 gameState.winner_faction === 'plagiarists' ? 'SYSTEM-SPIES_RULE_MATRIX' : 'BREACH_CONCLUDED'}
                              </h2>
-                             <p className="text-gold/60 uppercase text-[10px] font-black tracking-widest border-t border-gold/20 pt-4">Final Eidi Pot: ₹{gameState.eidi_pot > 0 ? gameState.eidi_pot : gameState.last_game_pot}</p>
+                             <div className="h-px bg-white/10 w-24 mx-auto" />
+                             <p className="text-neon-cyan font-black text-2xl tracking-tighter">TOTAL_ALLOCATION: C{gameState.eidi_pot > 0 ? gameState.eidi_pot : gameState.last_game_pot}</p>
                         </div>
 
                         {topAliveVictors.length > 0 && (
-                            <div className="p-6 bg-gold/10 rounded-2xl border border-gold/30 animate-scale-up">
-                                <p className="text-[10px] text-gold font-black uppercase tracking-[0.3em] mb-4">✨ Supreme Victor ✨</p>
-                                <div className="flex flex-wrap justify-center gap-6">
+                            <div className="mt-12 p-8 bg-white/5 rounded-xl border border-white/10 animate-fade-enter-active">
+                                <p className="text-[8px] text-white/30 font-black uppercase tracking-[0.5em] mb-6">SUPREME_VICTOR_DETECTED</p>
+                                <div className="flex flex-wrap justify-center gap-12">
                                     {topAliveVictors.map(v => (
-                                        <div key={v.id} className="text-center">
-                                            <div className="text-4xl font-black serif italic text-white drop-shadow-lg">{v.name}</div>
-                                            <div className="text-gold font-mono font-bold">₹{v.private_gold}</div>
+                                        <div key={v.id} className="text-center group">
+                                            <div className="text-4xl font-black text-neon-cyan group-hover:scale-110 transition-transform duration-500">{v.name}</div>
+                                            <div className="text-[10px] text-white/40 font-mono mt-2 uppercase tracking-widest font-black">C{v.private_gold} CREDITS</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
                     </div>
-                    <button onClick={handleResetGame} className="btn-premium w-full bg-emerald-600 py-5 rounded-2xl border-emerald-500 shadow-xl">Play Again</button>
-                    <button 
-                        onClick={() => handleTransition('payout')} 
-                        className="btn-premium w-full bg-white/10 text-white/60 py-4 rounded-xl border-white/10 hover:bg-white/20 active:scale-95 transition-all"
-                    >
-                        End Gathering & Pay Out
-                    </button>
+                    <div className="grid grid-cols-1 gap-2 font-mono">
+                        <button onClick={handleResetGame} className="btn-premium w-full bg-neon-cyan text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] shadow-xl">RE-STACK_BLOCKS</button>
+                        <button 
+                            onClick={() => handleTransition('payout')} 
+                            className="btn-premium w-full bg-white/5 text-white/60 py-4 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                        >
+                            DISPENSE_CREDITS_&_HALT
+                        </button>
+                    </div>
                 </div>
               )}
             </div>
 
             <button 
                 onClick={handleEmergencyReset}
-                className="mt-10 pt-4 border-t border-white/5 text-[9px] uppercase tracking-[0.4em] text-gray-700 hover:text-red-500 transition-colors text-center w-full"
+                className="mt-12 pt-6 border-t border-white/5 text-[8px] uppercase tracking-[0.6em] text-white/10 hover:text-red-500 transition-colors text-center w-full font-black font-mono"
             >
-                Emergency Reset
+                EMERGENCY_SYSTEM_RESET
             </button>
           </section>
         </div>

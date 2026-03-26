@@ -1,33 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&family=Roboto+Mono:ital,wght@0,300;0,400;0,700;1,400&display=swap');
 
 @import "tailwindcss";
 
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-gold: var(--gold);
-  --color-gold-muted: var(--gold-muted);
-  --color-charcoal: var(--charcoal);
-  --color-emerald-deep: var(--emerald-deep);
-  --color-crimson-black: var(--crimson-black);
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-purple: var(--neon-purple);
+  --color-obsidian: var(--obsidian);
+  --color-cyber-grid: var(--cyber-grid);
   
-  --font-sans: 'Outfit', sans-serif;
-  --font-serif: 'Lora', serif;
+  --font-sans: 'JetBrains Mono', monospace;
+  --font-mono: 'Roboto Mono', monospace;
+}
+
+html {
+  font-size: 90%;
 }
 
 :root {
-  --background: #050505;
-  --foreground: #ffffff;
-  --gold: #D4AF37;
-  --gold-muted: rgba(212, 175, 55, 0.4);
-  --charcoal: #0a0a0a;
-  --emerald-deep: #064E3B;
-  --crimson-black: #1A0505;
+  --background: #0A0A0A;
+  --foreground: #F0F0F0;
+  --neon-cyan: #00F3FF;
+  --neon-purple: #BC13FE;
+  --obsidian: #050505;
+  --cyber-grid: rgba(0, 243, 255, 0.05);
+  
+  /* Backward compatibility for vars that might be used elsewhere */
+  --gold: #00F3FF;
+  --gold-muted: rgba(0, 243, 255, 0.2);
+  --charcoal: #050505;
+  --emerald-deep: #0D0221;
+  --crimson-black: #1A051A;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020202;
+    --background: #080808;
     --foreground: #ffffff;
   }
 }
@@ -35,71 +44,79 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'JetBrains Mono', monospace;
+  background-image: 
+    linear-gradient(var(--cyber-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 
-h1, h2, h3, .serif {
-  font-family: 'Lora', serif;
-}
-
-.bg-emerald-deep {
-  background-color: var(--emerald-deep);
-}
-
-.bg-crimson-black {
-  background-color: var(--crimson-black);
+h1, h2, h3, .serif, .font-serif {
+  font-family: 'Roboto Mono', monospace;
+  letter-spacing: -0.05em;
 }
 
 .text-gold {
-  color: var(--gold);
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
 }
 
 .border-gold {
-  border-color: var(--gold);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
 }
 
-/* Glassmorphism utility */
+/* Glassmorphism utility overhauled for Cyberpunk */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(0, 243, 255, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
 }
 
 .bento-card {
-  border-radius: 1rem; /* rounded-2xl */
-  padding: 1.5rem; /* p-6 */
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(145deg, rgba(20, 20, 20, 0.4), rgba(5, 5, 5, 0.6));
 }
 
 .bento-card:hover {
-  transform: scale(1.02);
+  transform: translateY(-5px);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 10px 40px -10px rgba(0, 243, 255, 0.2);
+}
+
+.btn-premium {
+  transition: all 200ms ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .btn-premium:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
 }
 
-@keyframes pulse-gold {
-  0%, 100% { opacity: 1; border-color: rgba(212, 175, 55, 0.4); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
-  50% { opacity: 0.8; border-color: rgba(212, 175, 55, 1); box-shadow: 0 0 20px 5px rgba(212, 175, 55, 0.2); }
+@keyframes pulse-cyan {
+  0%, 100% { border-color: rgba(0, 243, 255, 0.3); box-shadow: 0 0 0 0 rgba(0, 243, 255, 0.1); }
+  50% { border-color: rgba(0, 243, 255, 1); box-shadow: 0 0 25px 2px rgba(0, 243, 255, 0.3); }
 }
 
 .animate-pulse-gold {
-  animation: pulse-gold 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-cyan 2.5s infinite;
 }
 
 /* Custom transitions */
 .fade-enter {
   opacity: 0;
-  transform: translateY(10px);
+  transform: scale(0.98);
 }
 .fade-enter-active {
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 300ms, transform 300ms;
+  transform: scale(1);
+  transition: opacity 400ms, transform 400ms;
 }
 
 @keyframes spin-slow {
@@ -107,46 +124,37 @@ h1, h2, h3, .serif {
   to { transform: rotate(360deg); }
 }
 .animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
+  animation: spin-slow 12s linear infinite;
 }
 
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
 }
-.animate-shimmer {
-  animation: shimmer 10s linear infinite;
+.scanline::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 2px;
+  background: rgba(0, 243, 255, 0.1);
+  animation: scanline 4s linear infinite;
 }
-
-@keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-
-.animate-marquee-slow {
-  animation: marquee 30s linear infinite;
-}
-
-@keyframes scale-up {
-  0% { transform: scale(0.95); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.animate-scale-up {
-  animation: scale-up 400ms ease-out forwards;
-}
-
-@keyframes bounce-slow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.animate-bounce-slow {
-  animation: bounce-slow 3s ease-in-out infinite;
-}
-
+ 
 @keyframes spin-to-stop {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(var(--target-rotation)); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(var(--target-rotation)); }
 }
 .animate-spin-to-stop {
-  animation: spin-to-stop 8s cubic-bezier(0.15, 0, 0.15, 1) forwards;
+  animation: spin-to-stop 5s cubic-bezier(0.15, 0, 0.15, 1) forwards;
+}
+ 
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+.glitch-hover:hover {
+  animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
 }

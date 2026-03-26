@@ -45,6 +45,19 @@ export interface Mission {
   host_answer_key?: string;
 }
 
+export const NARRATOR_SCRIPTS = {
+  lobby: "Welcome to the Cyber-Shadows terminal. Today, data meets betrayal. Runners, sync your nodes. Spies, prepare to infiltrate.",
+  reveal: "Check your devices. Your designation in this network is encrypted. Guard your secret with your code.",
+  mission_start: "The firewall drops. Runners, disconnect. System-Spies... reveal yourselves to one another. Dark-Sync for 60s!",
+  mission_progress: "The vault is targeted. Breach the encryption before the time expires. Data-Lead, state the hash.",
+  council: "System Termination (Breach Council) initialized! Anomalous signals detected in the data stream. Analyze and deactivate the rogue node.",
+  blackout: "Initiating Blackout Sync. All terminals offline. System-Spies... select a node for ID Deactivation.",
+  end_runners: "Network Secured! The Glitch-Runners have purged the anomalies!",
+  end_spies: "Breach Complete! The System-Spies have captured the Mainframe!",
+  sync_fallback: "The network has fallen. The Spies rule the data stream.",
+  decree: "The Overlord Protocol is active. Execution is mandatory."
+};
+
 /**
  * Core Game Logic Utilities
  */
@@ -130,7 +143,10 @@ export const advancePhase = async (roomId: string, nextPhase: GamePhase) => {
     }
     updateData.sabotage_triggered = false;
 
-    // 3. Set the 150s Mission Timer (60s Blindfold + 90s Solving)
+    // 3. Reset has_signaled for all players
+    await supabase.from('players').update({ has_signaled: false }).eq('room_id', roomId);
+
+    // 4. Set the 150s Mission Timer (60s Blindfold + 90s Solving)
     const timerEnd = new Date();
     timerEnd.setSeconds(timerEnd.getSeconds() + 150);
     updateData.mission_timer_end = timerEnd.toISOString();
@@ -149,11 +165,11 @@ export const startMission = async (roomId: string) => {
   const timerEnd = new Date();
   timerEnd.setSeconds(timerEnd.getSeconds() + 150);
 
-  // 2. Clear previous sabotage signals (round_id 0) to allow a fresh start
-  await supabase.from('votes').delete().eq('room_id', roomId).eq('round_id', 0);
-
-  // 3. Reset has_signaled for all players in the room
+  // 2. Reset has_signaled for all players in the room immediately
   await supabase.from('players').update({ has_signaled: false }).eq('room_id', roomId);
+
+  // 3. Clear previous sabotage signals (round_id 0)
+  await supabase.from('votes').delete().eq('room_id', roomId).eq('round_id', 0);
 
   // 4. Update room state
   await supabase.from('game_rooms').update({ 
