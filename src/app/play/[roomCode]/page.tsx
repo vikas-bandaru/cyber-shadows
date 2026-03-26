@@ -121,9 +121,23 @@ export default function PlayerClient() {
     return () => clearInterval(interval);
   }, [gameState?.mission_timer_end, gameState?.current_phase]);
 
+  const [displayPhase, setDisplayPhase] = useState(gameState?.current_phase);
+
+  useEffect(() => {
+    if (!gameState) return;
+    
+    // Guard: Only switch to mission phase if the timer has also been initialized
+    if (gameState.current_phase === 'mission' && !gameState.mission_timer_end) {
+        return; 
+    }
+    
+    setDisplayPhase(gameState.current_phase);
+  }, [gameState?.current_phase, gameState?.mission_timer_end]);
+
   const me = players.find(p => p.id === playerId);
   const isTraitor = me?.role === 'naqal_baaz';
   const roleName = isTraitor ? 'System-Spy' : 'Glitch-Runner';
+  const isAlive = me?.status === 'alive' || me?.status === 'silenced';
 
   useEffect(() => {
     if ((gameState?.current_phase === 'night' || gameState?.current_phase === 'mission' || gameState?.current_phase === 'majlis') && roomId) {
@@ -183,7 +197,19 @@ export default function PlayerClient() {
     </div>
   );
 
-  const isAlive = me.status === 'alive';
+  if (!gameState) return (
+    <div className="h-screen w-full bg-obsidian text-white p-10 flex flex-col items-center justify-center text-center overflow-hidden">
+        <h1 className="text-4xl font-black font-mono text-neon-cyan mb-4 uppercase tracking-tighter shadow-neon-cyan/10">Connection Lost</h1>
+        <p className="text-white/40 mb-8 font-mono">The Overlord has terminated the session or the network node is offline.</p>
+        <button 
+            onClick={() => window.location.href = '/'}
+            className="btn-premium bg-neon-cyan text-black py-4 px-8 rounded-lg active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,243,255,0.4)]"
+        >
+            Return to ENTRANCE
+        </button>
+    </div>
+  );
+
   const isBlindfoldPhase = timeLeft > 90;
 
   const handleVote = async (targetId: string, roundType: 'majlis' | 'night' = 'majlis') => {
@@ -344,7 +370,7 @@ export default function PlayerClient() {
     );
   }
 
-  if (gameState?.current_phase === 'reveal') {
+  if (displayPhase === 'reveal') {
     return (
       <main 
         onClick={handleReveal}
@@ -383,7 +409,7 @@ export default function PlayerClient() {
     );
   }
 
-  if (gameState?.current_phase === 'mission') {
+  if (displayPhase === 'mission') {
     if (!gameState.mission_timer_end) {
       return (
         <main className="min-h-screen bg-obsidian text-white p-6 flex flex-col items-center justify-center text-center animate-fade-enter-active">
@@ -498,7 +524,7 @@ export default function PlayerClient() {
     );
   }
 
-  if (gameState?.current_phase === 'majlis') {
+  if (displayPhase === 'majlis') {
     return (
         <main className="min-h-screen bg-black text-white p-6 relative overflow-hidden scanline">
             <RoleBadge />
@@ -562,7 +588,7 @@ export default function PlayerClient() {
     );
   }
 
-  if (gameState?.current_phase === 'night') {
+  if (displayPhase === 'night') {
     const potentialVictims = players.filter(p => p.status === 'alive' && p.role === 'sukhan_war');
     
     const tally = nightVotes.reduce((acc: any, v) => {
@@ -644,7 +670,7 @@ export default function PlayerClient() {
     );
   }
 
-  if (gameState?.current_phase === 'payout') {
+  if (displayPhase === 'payout') {
       const sortedPlayers = [...players].sort((a, b) => (b.gathering_gold || 0) - (a.gathering_gold || 0));
       const myRank = sortedPlayers.findIndex(p => p.id === playerId) + 1;
 
@@ -670,7 +696,7 @@ export default function PlayerClient() {
       );
   }
 
-  if (gameState?.current_phase === 'end') {
+  if (displayPhase === 'end') {
     const winners = gameState.winner_faction;
     const iWon = (winners === 'poets' && !isTraitor) || (winners === 'plagiarists' && isTraitor);
     

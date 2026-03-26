@@ -145,11 +145,6 @@ export const advancePhase = async (roomId: string, nextPhase: GamePhase) => {
 
     // 3. Reset has_signaled for all players
     await supabase.from('players').update({ has_signaled: false }).eq('room_id', roomId);
-
-    // 4. Set the 150s Mission Timer (60s Blindfold + 90s Solving)
-    const timerEnd = new Date();
-    timerEnd.setSeconds(timerEnd.getSeconds() + 150);
-    updateData.mission_timer_end = timerEnd.toISOString();
   }
 
   const { error } = await supabase

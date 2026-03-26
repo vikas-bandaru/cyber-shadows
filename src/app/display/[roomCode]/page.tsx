@@ -6,8 +6,9 @@ import { useParams } from 'next/navigation';
 import { useGameState } from '@/hooks/useGameState';
 import { usePlayers } from '@/hooks/usePlayers';
 import { useState, useEffect, useRef } from 'react';
-import { Cpu, Zap, Terminal, Shield, Activity, Lock } from 'lucide-react';
+import { Cpu, Zap, Terminal, Shield, Activity, Lock, QrCode } from 'lucide-react';
 import { THEME } from '@/lib/theme-config';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function PublicDisplay() {
   const { roomCode } = useParams() as { roomCode: string };
@@ -111,9 +112,23 @@ export default function PublicDisplay() {
             </div>
         </div>
         
-        <div className="text-right glass p-4 lg:p-6 rounded-xl border border-neon-cyan/20 flex flex-col items-center shadow-2xl bg-neon-cyan/5 min-w-[100px] lg:min-w-[150px] scanline">
-            <div className="text-[10px] lg:text-xs uppercase font-black text-neon-cyan/60 tracking-[0.3em] mb-2">Node_Access</div>
-            <div className="text-2xl lg:text-5xl font-black tracking-tighter text-white leading-none font-mono drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">{roomCode}</div>
+        <div className="flex gap-4 items-center">
+            <div className="text-right glass p-4 lg:p-6 rounded-xl border border-neon-cyan/20 flex flex-col items-center shadow-2xl bg-neon-cyan/5 min-w-[100px] lg:min-w-[150px] scanline relative group overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                <div className="text-[10px] lg:text-xs uppercase font-black text-neon-cyan/60 tracking-[0.3em] mb-2 font-mono">Node_Access</div>
+                <div className="text-2xl lg:text-5xl font-black tracking-tighter text-white leading-none font-mono drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">{roomCode}</div>
+            </div>
+            {/* Subtle persistent QR code in header */}
+            <div className="hidden lg:block glass p-2 rounded-lg border border-white/10 shadow-xl bg-white/5 opacity-40 hover:opacity-100 transition-opacity">
+                <QRCodeSVG 
+                    value={joinUrl} 
+                    size={64} 
+                    bgColor="transparent" 
+                    fgColor="#00f3ff" 
+                    level="L" 
+                    includeMargin={false}
+                />
+            </div>
         </div>
       </header>
 
@@ -128,11 +143,34 @@ export default function PublicDisplay() {
                         <div key={i} className={`w-8 h-8 rounded-sm border-2 transition-all duration-700 ${players[i] ? 'bg-neon-cyan border-neon-cyan scale-110 shadow-[0_0_20px_rgba(0,243,255,0.5)]' : 'bg-white/5 border-white/10'}`} />
                     ))}
                 </div>
-                <div className="space-y-4">
-                    <p className="text-white/30 uppercase tracking-[0.5em] font-black text-[10px]">Initialize_Terminal_Session</p>
-                    <p className="text-neon-cyan font-mono text-xl lg:text-4xl font-black bg-white/5 px-10 py-5 rounded-xl border border-white/10 select-all cursor-none hover:bg-neon-cyan/10 transition-all tracking-tighter">
-                        {joinUrl.replace('http://', '').replace('https://', '')}
-                    </p>
+                <div className="flex flex-col items-center gap-8 translate-y-4">
+                    <div className="relative group">
+                        <div className="absolute -inset-4 bg-neon-cyan/20 rounded-2xl blur-2xl group-hover:bg-neon-cyan/30 transition-all duration-1000 animate-pulse" />
+                        <div className="glass p-6 rounded-2xl border-2 border-neon-cyan relative bg-obsidian shadow-[0_0_60px_rgba(0,243,255,0.2)]">
+                            <QRCodeSVG 
+                                value={joinUrl} 
+                                size={220} 
+                                bgColor="#0B0E14" 
+                                fgColor="#00f3ff" 
+                                level="H" 
+                                marginSize={0}
+                                imageSettings={{
+                                    src: "/favicon.ico",
+                                    x: undefined,
+                                    y: undefined,
+                                    height: 40,
+                                    width: 40,
+                                    excavate: true,
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <p className="text-white/30 uppercase tracking-[0.5em] font-black text-[10px] font-mono">Initialize_Secure_Terminal_Link</p>
+                        <p className="text-neon-cyan font-mono text-xl lg:text-3xl font-black bg-white/5 px-10 py-5 rounded-xl border border-white/10 select-all cursor-none hover:bg-neon-cyan/10 transition-all tracking-tighter shadow-inner">
+                            {joinUrl.replace('http://', '').replace('https://', '')}
+                        </p>
+                    </div>
                 </div>
             </div>
         )}

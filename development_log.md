@@ -203,3 +203,47 @@ Resolve Vercel deployment failures and finalize project metadata for the "Cyber-
 - [x] Updated project name to `cyber-shadows` in `package.json`.
 - [x] Verified that all imported icons (`Cpu`, `Zap`, `Shield`, etc.) are now resolvable by the build engine.
 
+## 2026-03-26: Synchronization & Emergency Reset Fix (Phase 7)
+
+**Status:** Completed
+
+### Goal
+Ensure robust real-time synchronization and implement emergency reset mechanisms for game rooms.
+
+### Progress (What Worked)
+- **Real-time Deletion Handling**: Patched `useGameState.ts` to explicitly handle the `DELETE` event from Supabase.
+- **Global Termination**: Ensured all clients (Host, Player, Display) immediately redirect or transition to the "Connection Lost" state upon room deletion.
+- **State Guarding**: Implemented null-checks for `gameState` across all primary views to prevent crashes during terminal session resets.
+
+## 2026-03-26: UI Consistency & Flicker Prevention (Phase 8)
+
+**Status:** Completed
+
+### Goal
+Improve UI consistency and prevent visual flickers during phase transitions.
+
+### Progress (What Worked)
+- **Atomic Phase Decoupling**: Modified `advancePhase` in `game-logic.ts` to remove automatic mission timer initialization. The 150s countdown now only triggers when the Overlord explicitly executes `BEGIN_BREACH`.
+- **Transition Guarding**: Introduced `displayPhase` state in `PlayerClient.tsx`. This logic suppresses the "Initializing Breach" flicker by keeping players on their previous view until the mission timer is active and synced.
+- **Logic Hardening**: Resolved variable redeclaration issues and smoothed out component lifecycle effects for better performance and reliability.
+
+## 2026-03-26: Seamless Node Access (QR Integration) (Phase 9)
+
+**Status:** Completed
+
+### Goal
+Make it easier for players to join the 'Cyber-Shadows' session via QR code scanning.
+
+- **Persistent Access**: Included a subtle QR code in the display header, allowing late-comers to join at any point without disrupting the flow.
+
+## 2026-03-26: Breach Council Logic Hardening (Phase 10)
+
+**Status:** Completed
+
+### Goal
+Prevent premature phase transitions during the Breach Council by strictly shielding the transition button.
+
+### Progress (What Worked)
+- **Transition Shielding**: Wrapped the `INITIATE_BLACKOUT_SYNC` button in a conditional guard (`isTerminationConfirmed || potentialWinner`).
+- **Logic Validation**: Ensured the Overlord must finalize player termination before they can proceed to the next phase, eliminating accidental "stuck" states.
+- **Thematic Consistency**: Added `animate-fade-enter-active` to the button's appearance for a smooth, high-tech reveal once requirements are met.

@@ -1351,13 +1351,14 @@ export default function HostDashboard() {
                         </div>
                     )}
 
-                    <button 
-                        onClick={() => potentialWinner ? handleTransition('end') : handleTransition('night')}
-                        disabled={!isTerminationConfirmed && !potentialWinner} 
-                        className="btn-premium w-full bg-white text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] mt-8 shadow-xl"
-                    >
-                        {potentialWinner ? 'SYSTEM_HALT: REVEAL_RESULTS' : 'INITIATE_BLACKOUT_SYNC'}
-                    </button>
+                    {(isTerminationConfirmed || potentialWinner) && (
+                        <button 
+                            onClick={() => potentialWinner ? handleTransition('end') : handleTransition('night')}
+                            className="btn-premium w-full bg-white text-black py-6 rounded-xl text-xs font-black uppercase tracking-[0.3em] mt-8 shadow-xl animate-fade-enter-active"
+                        >
+                            {potentialWinner ? 'SYSTEM_HALT: REVEAL_RESULTS' : 'INITIATE_BLACKOUT_SYNC'}
+                        </button>
+                    )}
                 </div>
               )}
 

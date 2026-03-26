@@ -43,7 +43,9 @@ export function useGameState(roomCode: string) {
           },
           (payload) => {
             console.log("Real-time Update (game_rooms):", payload);
-            if (payload.new && (payload.new as any).id === id) {
+            if (payload.eventType === 'DELETE') {
+              setGameState(null);
+            } else if (payload.new && (payload.new as any).id === id) {
               setGameState(payload.new as GameState);
             }
           }
