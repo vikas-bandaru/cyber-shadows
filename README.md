@@ -1,56 +1,63 @@
 # Cyber-Shadows: Distributed Heist Protocol
 
-A real-time, multi-platform social deduction game set in a high-stakes Neo-Tokyo 2099. Inspired by "The Traitors," players take on roles as **Runners** (Poets) or **Plagiarists** (Spies) to breach the Overlord AI's Data-Vault.
+A real-time, multi-platform social deduction game set in a neon-drenched digital underworld. In Cyber-Shadows, players take on roles as **Glitch-Runners** or **System-Spies** to breach the Overlord AI's Data-Vault.
 
-## 🚀 Terminal Initialization
+## 🕹️ The Architecture of Deception
+
+Cyber-Shadows is designed for a seamless, multi-device experience across three primary entry points:
+
+1.  **Overlord Dashboard (`/host`)**: The central command node for the Host. Monitor the breach, trigger neural overrides, and authenticate system terminations.
+2.  **Glitch-Runner Client (`/play`)**: A mobile-optimized player interface for private roles, secure voting, and sabotage signaling. Features **Session Persistence** to survive unintended disconnects.
+3.  **System Matrix (`/display`)**: A cinematic public display providing the "Source of Truth" for all players. Includes mission reveals, high-stakes countdowns, and real-time result animations.
+
+---
+
+## 🚀 Quick Start Guide
 
 ### 1. Prerequisites
-- **Node.js**: v18 or later.
-- **Supabase**: Access to a project with `game_rooms`, `players`, `votes`, and `night_votes` tables.
+- **Node.js**: v18.0.0 or higher.
+- **Supabase Account**: Required for real-time state synchronization.
 
-### 2. Neural Link (Environment Variables)
-Create a `.env.local` file in the root directory and add your Supabase credentials:
+### 2. Neural Link (Environment Setup)
+Create a `.env.local` file in the root directory with your Supabase credentials:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### 3. Dependency Injection
-```bash
-npm install
-```
+### 3. Database Initialization
+The project uses a clean-slate, optimized PostgreSQL schema. Execute these scripts in your Supabase SQL Editor:
+1.  **[clean_init.sql](file:///Users/vikas/Documents/project_experiments/cyber-shadows/supabase/clean_init.sql)**: Establishes all core tables, enums, RLS policies, and the atomic liquidation function.
+2.  **[logical_missions.sql](file:///Users/vikas/Documents/project_experiments/cyber-shadows/supabase/logical_missions.sql)**: Seeds the database with high-stakes technical challenges and narrator scripts.
 
 ### 4. Running the Protocol
 ```bash
-# Start the development server
+# Install system dependencies
+npm install
+
+# Start the local development server
 npm run dev
 ```
-Access the node at [http://localhost:3000](http://localhost:3000).
+Access the local node at [http://localhost:3000](http://localhost:3000).
 
-## 🎭 Roles & Neural Sync
-Cyber-Shadows is designed for multi-device synchronization:
-- **Neo-Tokyo Entry**: A premium, high-tech portal for both Runners and Overlords.
-- **Overlord Dashboard (`/host`)**: The central command node to control the matrix flow.
-- **Neural Node Sync (QR Code)**: Instant mobile entry via QR code scanning directly from the public display.
-- **Runner Mobile Client**: Optimized for touch, featuring session persistence (Refresh Guard) and real-time status updates.
-- **Public Display (`/display`)**: The high-fidelity "Source of Truth" for the entire heist team.
+---
 
-## ⚡ Global Systems
-- **Neural Node Sync**: Distributed QR generation for effortless mobile player boarding.
-- **Atomic Transitions**: Flicker-free phase advancement protocols ensuring a smooth mission experience.
-- **Emergency Termination**: Global room deletion with real-time client reset synchronization.
-- **Distributed Potter**: Scalable support for up to **20 Runners** with adaptive UI layouts.
+## 🛠️ System Requirements
 
-## ✨ Thematic Interface
-- **Cyber-Net Aesthetic**: A premium obsidian interface with high-contrast Neon Cyan (`#00F3FF`) accents.
-- **Neural Overrides**: Interactive spin-animations and randomized decryption algorithms.
-- **Monospace Typography**: A technical, low-latency visual identity using modern fonts like **Outfit** and **Inter**.
-- **Real-time Feedback**: Immediate button states with "SIGNALING..." and "COPIED!" indicators.
+- **Framework**: Next.js 16 (App Router + Turbopack)
+- **State Engine**: Supabase Realtime (PostgreSQL Subscriptions)
+- **UI Architecture**: Tailwind CSS 4 & Vanilla CSS Design System
+- **Icons & Branding**: Lucide-React & JetBrains Mono Typography
 
-## 🛠️ Tech Stack
-- **Framework**: Next.js 16+ (App Router, Turbopack)
-- **Icons**: Lucide-React
-- **Neural Sync**: qrcode.react
-- **Database/Real-time**: Supabase
-- **Styling**: Vanilla CSS (Premium "Neural-Net" Design System)
-- **State Management**: React Hooks + Supabase Realtime Subscriptions
+---
+
+## 🤝 Contribution Protocol
+
+We welcome community-driven neural expansions! To contribute:
+1.  **Missions**: Propose new logical/technical challenges in `supabase/logical_missions.sql`.
+2.  **Themes**: Modify `src/lib/theme-config.ts` to implement new brand identities or design tokens.
+3.  **Core Logic**: Submit improvements to the state machine in `src/lib/game-logic.ts`.
+
+---
+> [!TIP]
+> For the best experience, host the **System Matrix** on a large screen and have players join via the **QR Code** displayed in the header.
