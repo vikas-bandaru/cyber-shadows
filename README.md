@@ -2,6 +2,10 @@
 
 A real-time, multi-platform social deduction game set in a neon-drenched digital underworld. In Cyber-Shadows, players take on roles as **Glitch-Runners** or **System-Spies** to breach the Overlord AI's Data-Vault.
 
+## 📖 In-Depth Documentation
+
+For detailed information on project-wide UML documentation, Data Flow Architecture, and the Synchronized State Machine, please refer to the **[game_design.md](file:///Users/vikas/Documents/project_experiments/cyber-shadows/game_design.md)**.
+
 ## 🕹️ The Architecture of Deception
 
 Cyber-Shadows is designed for a seamless, multi-device experience across three primary entry points:
