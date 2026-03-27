@@ -197,8 +197,8 @@ export default function PublicDisplay() {
                     <div className="space-y-12 py-10 animate-pulse">
                         <div className="text-8xl select-none opacity-20 flex justify-center"><Zap className="w-48 h-48 text-neon-purple shadow-[0_0_50px_rgba(188,19,254,0.3)]" /></div>
                         <div className="space-y-2">
-                            <h2 className="text-6xl lg:text-5xl font-black text-neon-purple uppercase tracking-[0.3em]">BLACKOUT_SYNC</h2>
-                            <p className="text-white/20 text-xl uppercase tracking-[0.8em] font-black">System_Stealth_Initialized</p>
+                            <h2 className="text-6xl lg:text-5xl font-black text-neon-purple uppercase tracking-[0.3em]">NEURAL_ISOLATION</h2>
+                            <p className="text-white/20 text-xl uppercase tracking-[0.8em] font-black">Neural_Interface_Syncing</p>
                             <div className="text-9xl font-black text-neon-purple mt-12 font-mono tracking-tighter shadow-neon-purple/20 drop-shadow-2xl">
                                 {timeLeft - 90}S
                             </div>

@@ -286,7 +286,7 @@ export default function HostDashboard() {
         console.log("Optimistic Transition to:", nextPhase);
         if (nextPhase === 'mission') {
             const timerEnd = new Date();
-            timerEnd.setSeconds(timerEnd.getSeconds() + 90);
+            timerEnd.setSeconds(timerEnd.getSeconds() + 150);
             setGameState(prev => prev ? { ...prev, current_phase: nextPhase, mission_timer_end: timerEnd.toISOString() } : null);
         } else {
             setGameState(prev => prev ? { ...prev, current_phase: nextPhase } : null);

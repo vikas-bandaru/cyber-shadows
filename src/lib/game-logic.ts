@@ -123,7 +123,7 @@ export const joinRoom = async (roomCode: string, playerName: string) => {
 export const advancePhase = async (roomId: string, nextPhase: GamePhase) => {
   const updateData: any = { 
     current_phase: nextPhase,
-    mission_timer_end: null, // Clear timer on every transition by default
+    mission_timer_end: nextPhase === 'mission' ? new Date(Date.now() + 150 * 1000).toISOString() : null, // Auto-start 150s timer for missions
     sabotage_triggered: false, // Reset trigger on every phase change
     sabotage_used: false,      // Reset verification status
     is_revealing: false,

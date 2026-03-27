@@ -11,20 +11,18 @@ The game features a high-fidelity, cinematic aesthetic defined by:
 
 ## 🕹️ Gameplay Loop
 
-### 1. Neural Breach (Phase: `mission`)
+### 1. Mission Phase (Neural Breach Challenge)
 - **Objective:** Glitch-Runners must complete a logical or technical challenge set by the Overlord.
 - **Neural Breach Timing (150 seconds):**
-    - **Neural Isolation (60s):** All players (except System-Spies) are blindfolded (simulated neural isolation). System-Spies use this window to view their secret assignment and coordinate.
-    - **Encryption Solving (90s):** All players open their eyes. The group works together to solve the technical/logical challenge before the timer hits 0.
-- **Mission Examples** (`logical_missions.sql`):
-    - **Binary Status Check**: Convert binary `00011011` to decimal.
-    - **Prime Sector ID**: Identify the true prime sector in a sequence (e.g., 97).
-    - **ASCII Sum Uplink**: Sum the ASCII values for "RUN" to unlock the uplink.
+    - **Neural Isolation (60 seconds):** All players (except System-Spies) are blindfolded (simulated neural isolation). System-Spies use this window to view their secret assignment and coordinate.
+    - **Encryption Solving (90 seconds):** All players open their eyes. The group works together to solve the technical/logical challenge before the timer hits 0.
 - **Unanimous Sabotage:** In games with multiple System-Spies, **all active System-Spies** must trigger their 'Sabotage' signal for it to be verified.
+    - **Verification:** Once confirmed by the Overlord (after a unanimous signal or mission timeout), the mission is considered "Sabotaged".
     - **The Breach Penalty:** A successful sabotaged mission adds only **1000 Credits** to the vault (vs 2000).
     - **System Leak Reward**: Verified signaling Spies receive **1000 Credits** in `private_gold` immediately.
+    - **Immediate Feedback:** Signaling provides tactile feedback with "Signaling..." button states.
 
-### 2. Breach Council (Phase: `majlis`)
+### 2. Breach Council (The Termination)
 - **Objective:** Debate and identify the infiltrators in the matrix.
 - **System Termination:** Players vote on who to deactivate. The Overlord then reveals the tally.
 - **Node Statuses** (`theme-config.ts`):

@@ -428,14 +428,14 @@ export default function PlayerClient() {
 
     if (isBlindfoldPhase && !isTraitor) {
       return (
-        <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center text-center animate-fade-enter-active">
+        <main className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center text-center animate-fade-enter-active scanline">
           <RoleBadge />
           <GoldBadge />
-          <div className="text-8xl mb-12 animate-pulse opacity-20"><Zap className="w-20 h-20 text-white" /></div>
-          <h1 className="text-4xl font-black text-gray-700 serif uppercase tracking-tighter mb-4">Disconnecting...</h1>
-          <p className="text-gray-800 italic uppercase tracking-[0.3em] font-black text-xs">The Overlord is revealing the encryption to the Spies...</p>
-          <div className="mt-20 text-gold/20 font-black text-6xl italic serif animate-pulse">
-            {timeLeft - 90}s
+          <div className="text-8xl mb-12 animate-pulse opacity-20"><Zap className="w-20 h-20 text-neon-purple shadow-[0_0_50px_rgba(188,19,254,0.3)]" /></div>
+          <h1 className="text-4xl font-black text-neon-purple font-mono uppercase tracking-tighter mb-4 shadow-neon-purple/20">NEURAL_ISOLATION</h1>
+          <p className="text-white/20 uppercase tracking-[0.3em] font-black text-xs font-mono">"The Overlord AI is re-mapping decryption keys.<br/>Wait for the signal..."</p>
+          <div className="mt-20 text-neon-purple/20 font-black text-6xl font-mono animate-pulse">
+            {timeLeft - 90}S
           </div>
         </main>
       );

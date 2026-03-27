@@ -218,6 +218,47 @@ To handle accidental browser refreshes, the application anchors critical identit
 
 ---
 
+## ⚙️ Game Engine Diagrams
+
+### 1. The Synchronized State Machine
+The core of the game is a **Finite State Machine (FSM)** where the `game_rooms.current_phase` acts as the global state controller.
+
+```mermaid
+stateDiagram-v2
+    [*] --> lobby: System Entry
+    lobby --> reveal: Designation Reveal
+    reveal --> mission: Neural Breach
+    mission --> majlis: Breach Council
+    majlis --> night: Blackout Sync
+    night --> majlis: Signal Analysis
+    majlis --> end: Operation Summary
+    end --> payout: Terminal Session Summary
+    payout --> lobby: Reset Matrix
+    payout --> [*]: Terminate Link
+```
+
+### 2. Data Flow Model (DFD Context)
+The project utilizes a **Unidirectional Data Flow** pattern mediated by Supabase.
+
+```mermaid
+sequenceDiagram
+    participant H as Overlord (Host)
+    participant S as Hub (Supabase)
+    participant P as Runner (Player)
+    participant D as Matrix (Display)
+
+    H->>S: advancePhase('mission')
+    S-->>S: Broadcast Table 'mission' Trigger
+    S->>P: CDC Event: New Phase 'mission'
+    S->>D: CDC Event: New Phase 'mission'
+    P->>P: Render 'Neural Breach' UI
+    D->>D: Start Cinematic Countdown
+    P->>S: triggerSabotage()
+    S->>H: CDC Event: Signal Verified
+```
+
+---
+
 ## 📂 Project Folder Structure
 
 The repository follows a standard Next.js directory layout with modular logic for game mechanics and database management.
